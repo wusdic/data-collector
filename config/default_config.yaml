@@ -1,0 +1,165 @@
+# DataCollector 配置
+# 自动化资料收集与管理系统配置
+
+# ============ 搜索配置 ============
+SEARCH:
+  # 搜索引擎配置
+  engines:
+    - name: google
+      enabled: true
+      api_key: ""  # 留空使用免费搜索
+      search_url: "https://www.googleapis.com/customsearch/v1"
+    
+    - name: bing
+      enabled: true
+      api_key: ""
+      search_url: "https://api.bing.microsoft.com/v7.0/search"
+    
+    - name: baidu
+      enabled: true
+      api_key: ""
+      search_url: "https://api.baidu.com/json/sms/v4/SerpSearch/get"
+    
+    - name: duckduckgo
+      enabled: true
+      search_url: "https://duckduckgo.com/html/"
+    
+    - name: feishu
+      enabled: true
+      # 飞书文档搜索
+
+  # 搜索限制
+  max_results: 50
+  timeout: 30
+  retry_times: 3
+
+# ============ 下载配置 ============
+DOWNLOAD:
+  # 下载目录
+  download_dir: "./downloads"
+  
+  # 并发下载数
+  concurrent_downloads: 3
+  
+  # 文件大小限制 (MB)
+  max_file_size: 100
+  
+  # 支持的文件类型
+  supported_types:
+    - pdf
+    - doc
+    - docx
+    - xls
+    - xlsx
+    - txt
+    - md
+    - html
+    - csv
+    - json
+  
+  # 重试配置
+  retry_times: 3
+  retry_delay: 5
+
+# ============ 分类配置 ============
+CLASSIFIER:
+  # 默认分类规则
+  categories:
+    - name: 法律法规
+      keywords: ["法律", "法规", "条例", "规定", "办法", "规章", "政策"]
+      extensions: ["pdf", "doc", "docx"]
+    
+    - name: 技术标准
+      keywords: ["标准", "规范", "GB", "ISO", "IEC", "行业标准"]
+      extensions: ["pdf", "doc", "docx"]
+    
+    - name: 研究报告
+      keywords: ["报告", "研究", "分析", "白皮书", "蓝皮书"]
+      extensions: ["pdf", "pptx", "md"]
+    
+    - name: 新闻资讯
+      keywords: ["新闻", "资讯", "动态", "快讯"]
+      extensions: ["html", "md", "txt"]
+    
+    - name: 学术论文
+      keywords: ["论文", "学术", "期刊", "会议", "发表"]
+      extensions: ["pdf"]
+    
+    - name: 工具资源
+      keywords: ["工具", "软件", "模板", "框架", "库"]
+      extensions: ["zip", "tar", "gz", "md"]
+
+  # 自动标签
+  auto_tags:
+    - keyword: "数据安全"
+      tag: "数据安全"
+    - keyword: "合规"
+      tag: "合规"
+    - keyword: "隐私"
+      tag: "隐私保护"
+    - keyword: "网络安全"
+      tag: "网络安全"
+
+# ============ 数据库配置 ============
+DATABASE:
+  type: sqlite  # sqlite / mysql / postgresql
+  path: "./data/collector.db"
+  
+  # MySQL/PostgreSQL配置
+  # host: "localhost"
+  # port: 3306
+  # user: "root"
+  # password: ""
+  # database: "data_collector"
+
+# ============ 更新监控配置 ============
+UPDATER:
+  # 启用自动更新检查
+  enabled: true
+  
+  # 检查间隔 (小时)
+  check_interval: 24
+  
+  # 监控的数据源
+  sources:
+    - name: 国家标准全文公开
+      url: "https://open.samr.gov.cn/"
+      check_pattern: "//div[@class='news-list']//a"
+      enabled: true
+    
+    - name: 法律法规数据库
+      url: "http://www.moj.gov.cn/"
+      check_pattern: ""
+      enabled: true
+    
+    - name: 行业主管部门网站
+      url: ""
+      enabled: false
+
+  # 更新提醒方式
+  notify:
+    - type: feishu
+      enabled: true
+      webhook: ""  # 飞书Webhook地址
+    
+    - type: email
+      enabled: false
+      smtp_server: ""
+      smtp_port: 587
+      sender: ""
+      receivers: []
+
+# ============ API配置 ============
+API:
+  host: "0.0.0.0"
+  port: 8080
+  debug: false
+  api_key: ""  # API密钥，留空则不启用
+
+# ============ 日志配置 ============
+LOG:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/collector.log"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
