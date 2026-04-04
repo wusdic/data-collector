@@ -34,3 +34,4 @@ htmlcov/
 tmp/
 temp/
 .cache/
+.github_config
