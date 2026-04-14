@@ -1,0 +1,226 @@
+# 法律合规数据库监控配置
+# 7层 + 2库 体系专用
+
+GITHUB:
+  owner: wusdic
+  repo: data-collector
+  branch: main
+  # token 从环境变量 GITHUB_TOKEN 或 ~/.github_config 读取，不要硬编码！
+  token: ""  
+  local_downloads_dir: ./downloads
+
+BITABLE:
+  app_token: GLupbdKK7aCApgsxO7NcFIGbnJf
+  tables:
+    法规主表:
+      table_id: tblUkUwxCDBWKDdK
+      field_mapping:
+        法规标题: title
+        法规类型: type
+        来源层级: level
+        发文机关: author
+        文号: doc_number
+        发布日期: publish_date
+        生效日期: effective_date
+        状态: status
+        原文链接: source_url
+        全文存储路径: local_path
+        标签: tags
+    执法案例库:
+      table_id: tbljSjhjzu1LtQwX
+      field_mapping:
+        案例标题: title
+        案例类型: case_type
+        处罚/审理机关: authority
+        案例日期: case_date
+        涉及法规: related_laws
+        案情摘要: summary
+        认定要点: key_points
+        处罚结果: result
+        原文链接: source_url
+
+# 层级 → 来源映射
+LEVELS:
+  L1_国家法律:
+    level_name: L1-国家法律
+    law_type: 法律
+    priority: high
+    sources:
+      - name: 全国人大
+        url: http://www.npc.gov.cn/
+        search_url: http://search.npc.gov.cn/
+        base_url: http://www.npc.gov.cn/
+      - name: 国家法律法规数据库
+        url: https://flk.npc.gov.cn/
+        search_url: https://flk.npc.gov.cn/api/
+        base_url: https://flk.npc.gov.cn/
+
+  L2_行政法规:
+    level_name: L2-行政法规
+    law_type: 行政法规
+    priority: high
+    sources:
+      - name: 国务院
+        url: http://www.gov.cn/
+        search_url: http://sousuo.gov.cn/
+        base_url: http://www.gov.cn/
+      - name: 司法部
+        url: https://www.moj.gov.cn/
+        search_url: https://search.moj.gov.cn/
+        base_url: https://www.moj.gov.cn/
+
+  L3_部门文件:
+    level_name: L3-部门/政府规章
+    law_type: 部门规章
+    priority: high
+    sources:
+      - name: 网信办
+        url: https://www.cac.gov.cn/
+        search_url: https://www.cac.gov.cn/search/
+        base_url: https://www.cac.gov.cn/
+        reg_patterns:
+          - /column/regulations/
+          - /column/4858/
+      - name: 工信部
+        url: https://www.miit.gov.cn/
+        search_url: https://www.miit.gov.cn/search/
+        base_url: https://www.miit.gov.cn/
+      - name: 公安部
+        url: https://www.mps.gov.cn/
+        search_url: https://www.mps.gov.cn/search/
+        base_url: https://www.mps.gov.cn/
+      - name: 央行
+        url: https://www.pbc.gov.cn/
+        search_url: https://www.pbc.gov.cn/search/
+        base_url: https://www.pbc.gov.cn/
+      - name: 银保监会
+        url: https://www.cbirc.gov.cn/
+        search_url: https://www.cbirc.gov.cn/search/
+        base_url: https://www.cbirc.gov.cn/
+      - name: 证监会
+        url: https://www.csrc.gov.cn/
+        search_url: https://www.csrc.gov.cn/search/
+        base_url: https://www.csrc.gov.cn/
+      - name: 卫健委
+        url: https://www.nhc.gov.cn/
+        search_url: https://www.nhc.gov.cn/search/
+        base_url: https://www.nhc.gov.cn/
+      - name: 教育部
+        url: https://www.moe.gov.cn/
+        search_url: https://www.moe.gov.cn/search/
+        base_url: https://www.moe.gov.cn/
+      - name: 交通运输部
+        url: https://www.mot.gov.cn/
+        search_url: https://www.mot.gov.cn/search/
+        base_url: https://www.mot.gov.cn/
+
+  L4_国家标准:
+    level_name: L4-国家标准
+    law_type: 国家标准
+    priority: high
+    sources:
+      - name: 国家标准全文公开系统
+        url: https://openstd.samr.gov.cn/
+        search_url: https://openstd.samr.gov.cn/bzgk/gb/
+        base_url: https://openstd.samr.gov.cn/
+        api_url: https://openstd.samr.gov.cn/api/
+
+  L5_行业标准:
+    level_name: L5-行业标准
+    law_type: 行业标准
+    priority: medium
+    sources:
+      - name: 金融行业标准
+        url: https://www.pbc.gov.cn/
+        keywords: [金融行业标准, 行业标准, 规范]
+      - name: 电信行业标准
+        url: https://www.miit.gov.cn/
+        keywords: [通信行业标准, 电信标准]
+      - name: 医疗行业标准
+        url: https://www.nhc.gov.cn/
+        keywords: [卫生行业标准, 医疗标准]
+
+  L6_地方文件:
+    level_name: L6-地方文件
+    law_type: 地方政府规章
+    priority: medium
+    sources:
+      - name: 北京市
+        url: http://www.beijing.gov.cn/
+      - name: 上海市
+        url: https://www.shanghai.gov.cn/
+      - name: 广东省
+        url: https://www.gd.gov.cn/
+      - name: 浙江省
+        url: https://www.zj.gov.cn/
+      - name: 江苏省
+        url: https://www.jiangsu.gov.cn/
+
+  L7_地方标准:
+    level_name: L7-地方标准
+    law_type: 地方性法规
+    priority: medium
+    sources:
+      - name: 地方标准信息服务平台
+        url: https://www.cpbz.gov.cn/
+      - name: 各省市监局
+        keywords: [地方标准, DB44, DB31, DB33, DB32]
+
+执法案例库:
+  priority: high
+  sources:
+    - name: 网信办执法案例
+      url: https://www.cac.gov.cn/column/case/
+      base_url: https://www.cac.gov.cn/
+    - name: 工信部执法
+      url: https://www.miit.gov.cn/column/4634/
+      base_url: https://www.miit.gov.cn/
+    - name: 公安部网络安全
+      url: https://www.mps.gov.cn/
+      keywords: [行政处罚, 执法案例]
+
+MONITOR:
+  # 每次运行检查的时间范围（天）
+  lookback_days: 30
+  
+  # 下载文件类型
+  download_types:
+    - pdf
+    - doc
+    - docx
+  
+  # 下载目录按层级组织
+  dir_structure:
+    L1_国家法律: laws/L1_国家法律/
+    L2_行政法规: laws/L2_行政法规/
+    L3_部门文件: laws/L3_部门文件/
+    L4_国家标准: standards/L4_国家标准/
+    L5_行业标准: standards/L5_行业标准/
+    L6_地方文件: laws/L6_地方文件/
+    L7_地方标准: standards/L7_地方标准/
+    执法案例库: cases/
+
+  # 状态默认值
+  default_status: 现行有效
+  
+  # 通知配置
+  notify:
+    enabled: true
+    feishu_open_id: ou_e516983d45eb60d4fbf9a70d3486b782
+
+  # GitHub提交信息模板
+  github_commit_template: |
+    [自动更新] {date}
+    
+    ## 新增/更新文件
+    {file_list}
+    
+    ## 变更说明
+    {change_summary}
+
+SCHEDULE:
+  # 定时运行：每周一早上9点检查上周新规
+  cron: "0 9 * * 1"
+  
+  # 是否启用定时任务
+  enabled: true
