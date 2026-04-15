@@ -1,0 +1,495 @@
+# 法律合规数据库监控 - 数据源配置
+# 7层 + 2库 对应的搜索数据源
+# 可定期手动或自动更新此文件
+
+sources:
+  # ═══════════════════════════════════════════════════════════════════
+  # L1-国家法律
+  # 说明: 全国人民代表大会及其常务委员会制定的法律
+  # 优先级: 🔴 高
+  # ═══════════════════════════════════════════════════════════════════
+  L1_国家法律:
+    level_name: "L1-国家法律"
+    law_type: "法律"
+    priority: "high"
+    sources:
+      - name: "全国人大官网"
+        type: "website"
+        url: "http://www.npc.gov.cn/"
+        search_url: "http://search.npc.gov.cn/"
+        search_keyword_template: "site:npc.gov.cn {keyword} 2024 2025"
+        keywords: ["数据安全", "网络安全", "个人信息", "数据法", "网络法"]
+        check_pattern: "法律"
+        enabled: true
+      - name: "国家法律法规数据库"
+        type: "website"
+        url: "https://flk.npc.gov.cn/"
+        search_url: "https://flk.npc.gov.cn/"
+        search_keyword_template: "site:flk.npc.gov.cn {keyword}"
+        keywords: ["数据安全", "网络安全", "个人信息保护"]
+        check_pattern: "法律"
+        enabled: true
+      - name: "中国政府网"
+        type: "website"
+        url: "https://www.gov.cn/"
+        search_url: "https://www.gov.cn/search/"
+        search_keyword_template: "site:gov.cn 法律 {keyword} 2024 2025"
+        keywords: ["数据安全法", "网络安全法", "个人信息保护法"]
+        check_pattern: "全国人民代表大会常务委员会"
+        enabled: true
+      - name: "微信公众号-全国人大"
+        type: "wechat"
+        account_id: "npc12340"
+        search_keyword_template: "{keyword} 法律 发布"
+        keywords: ["数据安全", "网络安全", "个人信息"]
+        enabled: false
+
+  # ═══════════════════════════════════════════════════════════════════
+  # L2-行政法规
+  # 说明: 国务院制定的行政法规
+  # 优先级: 🔴 高
+  # ═══════════════════════════════════════════════════════════════════
+  L2_行政法规:
+    level_name: "L2-行政法规"
+    law_type: "行政法规"
+    priority: "high"
+    sources:
+      - name: "国务院官网"
+        type: "website"
+        url: "https://www.gov.cn/"
+        search_url: "https://sousuo.gov.cn/"
+        search_keyword_template: "site:gov.cn 行政法规 {keyword} 2024 2025"
+        keywords: ["数据安全", "网络安全", "网络管理", "网络数据"]
+        check_pattern: "国务院令"
+        enabled: true
+      - name: "司法部"
+        type: "website"
+        url: "https://www.moj.gov.cn/"
+        search_url: "https://www.moj.gov.cn/search/"
+        search_keyword_template: "site:moj.gov.cn 行政法规 {keyword}"
+        keywords: ["数据安全", "网络安全"]
+        check_pattern: "司法部"
+        enabled: true
+      - name: "中国政府网-国务院令"
+        type: "website"
+        url: "https://www.gov.cn/zhengce/jiedu.htm"
+        search_keyword_template: "国务院令 {keyword}"
+        keywords: ["数据", "网络", "安全"]
+        check_pattern: "国务院令第"
+        enabled: true
+
+  # ═══════════════════════════════════════════════════════════════════
+  # L3-部门文件
+  # 说明: 国务院各部委、各直属机构发布的部门规章和规范性文件
+  # 优先级: 🔴 高
+  # ═══════════════════════════════════════════════════════════════════
+  L3_部门文件:
+    level_name: "L3-部门/政府规章"
+    law_type: "部门规章"
+    priority: "high"
+    sources:
+      - name: "国家互联网信息办公室"
+        type: "website"
+        url: "https://www.cac.gov.cn/"
+        search_url: "https://www.cac.gov.cn/search/"
+        search_keyword_template: "site:cac.gov.cn {keyword} 2024 2025"
+        keywords: ["数据安全", "网络安全", "个人信息", "算法", "生成式AI", "人脸识别", "网络身份认证", "合规审计", "行政处罚"]
+        check_pattern: "国家互联网信息办公室"
+        columns:
+          - path: "/column/regulations"
+            name: "政策法规"
+          - path: "/column/4858"
+            name: "部门规章"
+          - path: "/column/4859"
+            name: "规范性文件"
+        enabled: true
+      - name: "工业和信息化部"
+        type: "website"
+        url: "https://www.miit.gov.cn/"
+        search_url: "https://www.miit.gov.cn/search/"
+        search_keyword_template: "site:miit.gov.cn {keyword} 部门规章 2024 2025"
+        keywords: ["数据安全", "网络安全", "IDC", "数据中心", "电信"]
+        check_pattern: "工业和信息化部"
+        enabled: true
+      - name: "公安部"
+        type: "website"
+        url: "https://www.mps.gov.cn/"
+        search_url: "https://www.mps.gov.cn/search/"
+        search_keyword_template: "site:mps.gov.cn {keyword} 2024 2025"
+        keywords: ["网络安全", "数据安全", "个人信息"]
+        check_pattern: "公安部"
+        enabled: true
+      - name: "中国人民银行"
+        type: "website"
+        url: "https://www.pbc.gov.cn/"
+        search_url: "https://www.pbc.gov.cn/search/"
+        search_keyword_template: "site:pbc.gov.cn {keyword} 2024 2025"
+        keywords: ["金融数据", "网络安全", "个人信息金融"]
+        check_pattern: "中国人民银行"
+        enabled: true
+      - name: "国家市场监督管理总局"
+        type: "website"
+        url: "https://www.samr.gov.cn/"
+        search_url: "https://www.samr.gov.cn/search/"
+        search_keyword_template: "site:samr.gov.cn {keyword} 2024 2025"
+        keywords: ["数据安全", "网络安全"]
+        check_pattern: "市场监管总局"
+        enabled: true
+      - name: "国家卫生健康委员会"
+        type: "website"
+        url: "https://www.nhc.gov.cn/"
+        search_url: "https://www.nhc.gov.cn/search/"
+        search_keyword_template: "site:nhc.gov.cn {keyword} 卫生健康数据 2024 2025"
+        keywords: ["健康医疗数据", "医疗信息安全"]
+        check_pattern: "国家卫生健康委员会"
+        enabled: true
+      - name: "交通运输部"
+        type: "website"
+        url: "https://www.mot.gov.cn/"
+        search_url: "https://www.mot.gov.cn/search/"
+        search_keyword_template: "site:mot.gov.cn {keyword} 2024 2025"
+        keywords: ["交通数据", "网约车", "自动驾驶数据"]
+        check_pattern: "交通运输部"
+        enabled: true
+      - name: "教育部"
+        type: "website"
+        url: "https://www.moe.gov.cn/"
+        search_url: "https://www.moe.gov.cn/search/"
+        search_keyword_template: "site:moe.gov.cn {keyword} 教育数据 2024 2025"
+        keywords: ["教育数据", "学生个人信息"]
+        check_pattern: "教育部"
+        enabled: true
+
+  # ═══════════════════════════════════════════════════════════════════
+  # L4-国家标准
+  # 说明: 国家标准化管理委员会发布的国家标准（GB/T, GB）
+  # 优先级: 🔴 高
+  # ═══════════════════════════════════════════════════════════════════
+  L4_国家标准:
+    level_name: "L4-国家标准"
+    law_type: "国家标准"
+    priority: "high"
+    sources:
+      - name: "国家标准全文公开系统"
+        type: "website"
+        url: "https://openstd.samr.gov.cn/"
+        search_url: "https://openstd.samr.gov.cn/bzgk/gb/"
+        search_keyword_template: "site:openstd.samr.gov.cn GB/T {keyword} 2024 2025"
+        keywords: ["数据安全", "网络安全", "个人信息保护", "信息安全"]
+        check_pattern: "GB/T"
+        enabled: true
+      - name: "全国标准信息公共服务平台"
+        type: "website"
+        url: "https://std.samr.gov.cn/"
+        search_url: "https://std.samr.gov.cn/search/"
+        search_keyword_template: "site:std.samr.gov.cn {keyword}"
+        keywords: ["数据安全", "网络安全", "个人信息"]
+        check_pattern: "GB"
+        enabled: true
+      - name: "国家标准委"
+        type: "website"
+        url: "https://www.sac.gov.cn/"
+        search_url: "https://www.sac.gov.cn/search/"
+        search_keyword_template: "site:sac.gov.cn {keyword} 国家标准 2024 2025"
+        keywords: ["数据安全标准", "网络安全标准"]
+        check_pattern: "国家标准"
+        enabled: true
+      - name: "全国信息安全标准化技术委员会"
+        type: "website"
+        url: "https://www.tc260.org.cn/"
+        search_url: "https://www.tc260.org.cn/index.html"
+        search_keyword_template: "site:tc260.org.cn {keyword}"
+        keywords: ["信息安全技术", "数据安全", "网络安全"]
+        check_pattern: "TC260"
+        enabled: true
+
+  # ═══════════════════════════════════════════════════════════════════
+  # L5-行业标准
+  # 说明: 各行业主管部门发布的行业标准
+  # 优先级: 🟡 中
+  # ═══════════════════════════════════════════════════════════════════
+  L5_行业标准:
+    level_name: "L5-行业标准"
+    law_type: "行业标准"
+    priority: "medium"
+    sources:
+      - name: "金融行业-中国人民银行"
+        type: "website"
+        url: "https://www.pbc.gov.cn/"
+        search_url: "https://www.pbc.gov.cn/search/"
+        search_keyword_template: "site:pbc.gov.cn 金融行业标准 {keyword} 2024 2025"
+        keywords: ["金融行业标准", "个人金融信息", "金融数据"]
+        check_pattern: "金融行业标准"
+        enabled: true
+      - name: "金融行业-国家金融监督管理总局"
+        type: "website"
+        url: "https://www.nfra.gov.cn/"
+        search_url: "https://www.nfra.gov.cn/"
+        search_keyword_template: "site:nfra.gov.cn {keyword} 2024 2025"
+        keywords: ["银行保险数据", "金融消费者"]
+        check_pattern: "国家金融监督管理总局"
+        enabled: true
+      - name: "金融行业-证监会"
+        type: "website"
+        url: "https://www.csrc.gov.cn/"
+        search_url: "https://www.csrc.gov.cn/search/"
+        search_keyword_template: "site:csrc.gov.cn {keyword} 证券期货 2024 2025"
+        keywords: ["证券期货数据", "投资者信息"]
+        check_pattern: "中国证券监督管理委员会"
+        enabled: true
+      - name: "电信行业-工信部"
+        type: "website"
+        url: "https://www.miit.gov.cn/"
+        search_url: "https://www.miit.gov.cn/search/"
+        search_keyword_template: "site:miit.gov.cn 电信行业标准 {keyword}"
+        keywords: ["电信行业标准", "通信数据"]
+        check_pattern: "电信行业标准"
+        enabled: true
+      - name: "医疗行业-卫健委"
+        type: "website"
+        url: "https://www.nhc.gov.cn/"
+        search_url: "https://www.nhc.gov.cn/search/"
+        search_keyword_template: "site:nhc.gov.cn 卫生行业标准 {keyword}"
+        keywords: ["卫生行业标准", "健康医疗数据标准"]
+        check_pattern: "卫生行业标准"
+        enabled: true
+
+  # ═══════════════════════════════════════════════════════════════════
+  # L6-地方文件
+  # 说明: 各省、自治区、直辖市人民代表大会及其常委会制定的地方性法规
+  # 优先级: 🟡 中
+  # ═══════════════════════════════════════════════════════════════════
+  L6_地方文件:
+    level_name: "L6-地方文件"
+    law_type: "地方政府规章"
+    priority: "medium"
+    sources:
+      - name: "北京市"
+        type: "website"
+        url: "https://www.beijing.gov.cn/"
+        search_url: "https://www.beijing.gov.cn/search/"
+        search_keyword_template: "site:beijing.gov.cn {keyword} 数据安全 2024 2025"
+        keywords: ["数据安全", "个人信息保护"]
+        check_pattern: "北京市"
+        enabled: true
+      - name: "上海市"
+        type: "website"
+        url: "https://www.shanghai.gov.cn/"
+        search_url: "https://www.shanghai.gov.cn/search/"
+        search_keyword_template: "site:shanghai.gov.cn {keyword} 数据安全 2024 2025"
+        keywords: ["数据安全", "个人信息保护"]
+        check_pattern: "上海市"
+        enabled: true
+      - name: "广东省"
+        type: "website"
+        url: "https://www.gd.gov.cn/"
+        search_url: "https://www.gd.gov.cn/search/"
+        search_keyword_template: "site:gd.gov.cn {keyword} 数据安全 2024 2025"
+        keywords: ["数据安全", "个人信息保护"]
+        check_pattern: "广东省"
+        enabled: true
+      - name: "浙江省"
+        type: "website"
+        url: "https://www.zj.gov.cn/"
+        search_url: "https://www.zj.gov.cn/search/"
+        search_keyword_template: "site:zj.gov.cn {keyword} 数据安全 2024 2025"
+        keywords: ["数据安全", "个人信息保护"]
+        check_pattern: "浙江省"
+        enabled: true
+      - name: "江苏省"
+        type: "website"
+        url: "https://www.jiangsu.gov.cn/"
+        search_url: "https://www.jiangsu.gov.cn/search/"
+        search_keyword_template: "site:jiangsu.gov.cn {keyword} 数据安全 2024 2025"
+        keywords: ["数据安全", "个人信息保护"]
+        check_pattern: "江苏省"
+        enabled: true
+      - name: "四川省"
+        type: "website"
+        url: "https://www.sc.gov.cn/"
+        search_url: "https://www.sc.gov.cn/search/"
+        search_keyword_template: "site:sc.gov.cn {keyword} 数据安全 2024 2025"
+        keywords: ["数据安全", "个人信息保护"]
+        check_pattern: "四川省"
+        enabled: true
+
+  # ═══════════════════════════════════════════════════════════════════
+  # L7-地方标准
+  # 说明: 各省市市场监督管理局发布的地方标准
+  # 优先级: 🟡 中
+  # ═══════════════════════════════════════════════════════════════════
+  L7_地方标准:
+    level_name: "L7-地方标准"
+    law_type: "地方性法规"
+    priority: "medium"
+    sources:
+      - name: "地方标准信息服务平台"
+        type: "website"
+        url: "https://dbba.sacinfo.org.cn/"
+        search_url: "https://dbba.sacinfo.org.cn/"
+        search_keyword_template: "site:dbba.sacinfo.org.cn {keyword} DB"
+        keywords: ["地方标准", "DB44", "DB31", "DB33", "数据安全"]
+        check_pattern: "DB"
+        enabled: true
+      - name: "北京市监局"
+        type: "website"
+        url: "https://scjgj.beijing.gov.cn/"
+        search_url: "https://scjgj.beijing.gov.cn/search/"
+        search_keyword_template: "site:scjgj.beijing.gov.cn {keyword} 地方标准"
+        keywords: ["地方标准", "北京DB"]
+        check_pattern: "北京市市场监督管理局"
+        enabled: true
+      - name: "上海市监局"
+        type: "website"
+        url: "https://scjgj.sh.gov.cn/"
+        search_url: "https://scjgj.sh.gov.cn/search/"
+        search_keyword_template: "site:scjgj.sh.gov.cn {keyword} 上海DB 地方标准"
+        keywords: ["地方标准", "DB31"]
+        check_pattern: "上海市市场监督管理局"
+        enabled: true
+      - name: "广东省监局"
+        type: "website"
+        url: "https://amr.gd.gov.cn/"
+        search_url: "https://amr.gd.gov.cn/search/"
+        search_keyword_template: "site:amr.gd.gov.cn {keyword} 广东DB 地方标准"
+        keywords: ["地方标准", "DB44"]
+        check_pattern: "广东省市场监督管理局"
+        enabled: true
+
+  # ═══════════════════════════════════════════════════════════════════
+  # 执法案例库
+  # 说明: 行政处罚案例、司法判例、监管问答、执法解读
+  # 优先级: 🔴 高
+  # ═══════════════════════════════════════════════════════════════════
+  执法案例库:
+    level_name: "执法案例库"
+    law_type: "执法案例"
+    priority: "high"
+    sources:
+      - name: "网信办执法案例"
+        type: "website"
+        url: "https://www.cac.gov.cn/"
+        search_url: "https://www.cac.gov.cn/search/"
+        search_keyword_template: "site:cac.gov.cn 行政处罚 {keyword} 2024 2025"
+        keywords: ["行政处罚", "执法案例", "通报", "处罚", "罚款", "违法收集", "违规"]
+        check_pattern: "行政处罚"
+        columns:
+          - path: "/column/case"
+            name: "执法案例"
+          - path: "/column/6590"
+            name: "监管执法"
+        enabled: true
+      - name: "工信部执法"
+        type: "website"
+        url: "https://www.miit.gov.cn/"
+        search_url: "https://www.miit.gov.cn/search/"
+        search_keyword_template: "site:miit.gov.cn 行政处罚 {keyword} 2024 2025"
+        keywords: ["行政处罚", "违规", "App", "通报"]
+        check_pattern: "行政处罚"
+        enabled: true
+      - name: "公安部网络安全"
+        type: "website"
+        url: "https://www.mps.gov.cn/"
+        search_url: "https://www.mps.gov.cn/search/"
+        search_keyword_template: "site:mps.gov.cn {keyword} 处罚 2024 2025"
+        keywords: ["网络安全处罚", "违法", "数据泄露"]
+        check_pattern: "行政处罚"
+        enabled: true
+      - name: "全国信用信息共享平台"
+        type: "website"
+        url: "https://www.creditchina.gov.cn/"
+        search_url: "https://www.creditchina.gov.cn/xinxigongshi/"
+        search_keyword_template: "site:creditchina.gov.cn {keyword} 数据 安全 处罚"
+        keywords: ["数据安全处罚", "个人信息处罚"]
+        check_pattern: "行政处罚决定书"
+        enabled: false
+      - name: "国家企业信用信息公示系统"
+        type: "website"
+        url: "https://www.gsxt.gov.cn/"
+        search_url: "https://www.gsxt.gov.cn/search"
+        search_keyword_template: "{keyword} 行政处罚 数据安全"
+        keywords: ["数据安全", "个人信息", "行政处罚"]
+        check_pattern: "行政处罚"
+        enabled: false
+
+  # ═══════════════════════════════════════════════════════════════════
+  # 参考资料库（待建）
+  # 说明: 指南、白皮书、研究报告等参考资料
+  # 优先级: 🟢 低
+  # ═══════════════════════════════════════════════════════════════════
+  参考资料库:
+    level_name: "参考资料库"
+    law_type: "参考资料"
+    priority: "low"
+    sources:
+      - name: "网信办指南"
+        type: "website"
+        url: "https://www.cac.gov.cn/"
+        search_url: "https://www.cac.gov.cn/search/"
+        search_keyword_template: "site:cac.gov.cn {keyword} 指南 白皮书 2024 2025"
+        keywords: ["合规指南", "实施指南", "白皮书", "研究报告"]
+        check_pattern: "指南"
+        enabled: false
+      - name: "信安标委指南"
+        type: "website"
+        url: "https://www.tc260.org.cn/"
+        search_url: "https://www.tc260.org.cn/index.html"
+        search_keyword_template: "site:tc260.org.cn {keyword} 指南 规范"
+        keywords: ["指南", "规范", "最佳实践"]
+        check_pattern: "指南"
+        enabled: false
+
+# ═══════════════════════════════════════════════════════════════════════
+# 搜索关键词配置（用于通用搜索）
+# ═══════════════════════════════════════════════════════════════════════
+search_keywords:
+  primary:
+    - "数据安全"
+    - "网络安全"
+    - "个人信息保护"
+    - "网络数据"
+  secondary:
+    - "合规"
+    - "安全管理"
+    - "安全要求"
+    - "数据管理"
+  time_range:
+    default_days: 30
+    extend_days: 90
+
+# ═══════════════════════════════════════════════════════════════════════
+# 监控配置
+# ═══════════════════════════════════════════════════════════════════════
+monitor_config:
+  # 回查天数
+  lookback_days: 30
+  
+  # 每次最大新增记录数
+  max_new_records: 50
+  
+  # 是否下载原文
+  download_content: true
+  
+  # 是否同步到GitHub
+  sync_to_github: true
+  
+  # GitHub配置
+  github:
+    owner: "wusdic"
+    repo: "data-collector"
+    branch: "master"
+  
+  # 本地存储路径
+  local_paths:
+    base_dir: "regulations"
+    csv_file: "regulations.csv"
+    level_dirs:
+      L1: "L1_国家法律"
+      L2: "L2_行政法规"
+      L3: "L3_部门文件"
+      L4: "L4_国家标准"
+      L5: "L5_行业标准"
+      L6: "L6_地方文件"
+      L7: "L7_地方标准"
+      case: "cases_执法案例库"
+      ref: "ref_参考资料库"
