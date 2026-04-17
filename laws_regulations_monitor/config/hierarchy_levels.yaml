@@ -1,0 +1,264 @@
+# ============================================================
+# 数据安全法规监控 - 7层 + 2库 层级体系配置
+# 层级结构等同于数据库表 schema，供爬虫程序调用匹配
+# ============================================================
+
+hierarchy_version: "2026-04-17"
+description: "数据安全合规法规7层+2库层级体系，等同于数据库表结构"
+
+# ----------------------------------------------------------
+# 表结构定义
+# ----------------------------------------------------------
+fields:
+  - name: 层级
+    type: text
+    description: "层级代码，如 L1, L2, L3, L4, L5, L6, L7, EDB, REF"
+    required: true
+
+  - name: 层级名称
+    type: text
+    description: "层级中文名称"
+    required: true
+
+  - name: 涵盖类别
+    type: text
+    description: "该层级涵盖的法规类别描述"
+    required: true
+
+  - name: 信息源列表
+    type: array
+    description: "该层级对应的所有信息来源，每个来源包含名称/URL/类型/状态"
+    required: true
+
+# ----------------------------------------------------------
+# 层级数据
+# ----------------------------------------------------------
+levels:
+
+  # -------- L1: 国家法律 --------------------------------
+  - code: L1
+    name: 国家法律
+    category: >
+      国家正式发布的法律（全国人民代表大会及其常务委员会制定）。
+      包含司法解释（最高人民法院、最高人民检察院对法律的解释），
+      作为对应法律的附属文件。
+    sources:
+      - name: "CAC法规中心 - 国家法律"
+        url: "https://www.chinalaw.gov.cn/col/col709/index.html"
+        api: "https://search.chinalaw.gov.cn/search9.html"
+        type: json_api
+        channel_code: "A09370301"
+        status: available
+        note: "CAC国家法律数据库，全量JSON API，实时更新"
+      - name: "全国人大官网 - 法律法规"
+        url: "https://www.npc.gov.cn/flfw1/flfg/flist.html"
+        type: html
+        status: blocked
+        note: "SPA网站，Selenium可解但效率低，已被CAC全量覆盖"
+
+  # -------- L2: 行政法规 --------------------------------
+  - code: L2
+    name: 行政法规
+    category: >
+      国务院制定的行政法规。
+      包括：网络数据安全管理条例、关键信息基础设施安全保护条例、
+      数据出境安全评估办法等。
+    sources:
+      - name: "CAC法规中心 - 行政法规"
+        url: "https://www.chinalaw.gov.cn/col/col709/index.html"
+        api: "https://search.chinalaw.gov.cn/search9.html"
+        type: json_api
+        channel_code: "A09370302"
+        status: available
+        note: "CAC行政法规数据库，JSON API"
+
+  # -------- L3: 部门规章 --------------------------------
+  - code: L3
+    name: 部门规章
+    category: >
+      国家部委（国家互联网信息办公室、工业和信息化部、公安部、
+      商务部等）发布的部门规章和规范性文件。
+      包括：App违法违规收集使用个人信息行为认定方法、
+      网络安全审查办法、汽车数据安全管理若干规定、
+      工业和信息化领域数据安全管理办法等。
+    sources:
+      - name: "CAC法规中心 - 部门规章"
+        url: "https://www.chinalaw.gov.cn/col/col709/index.html"
+        api: "https://search.chinalaw.gov.cn/search9.html"
+        type: json_api
+        channel_code: "A09370303"
+        status: available
+        note: "CAC部门规章数据库，JSON API"
+      - name: "CAC法规中心 - 部门规范性文件"
+        url: "https://www.chinalaw.gov.cn/col/col709/index.html"
+        api: "https://search.chinalaw.gov.cn/search9.html"
+        type: json_api
+        channel_code: "A09370305"
+        status: available
+        note: "CAC部门规范性文件，JSON API"
+      - name: "工信部政策法规"
+        url: "https://www.miit.gov.cn/search/search.html?w=%E6%95%B0%E6%8D%AE%E5%AE%89%E5%85%A8"
+        type: html
+        status: untested
+        note: "需测试SSL和反爬机制"
+      - name: "公安部法规"
+        url: "https://www.mps.gov.cn/n6557558/index.html"
+        type: html
+        status: untested
+        note: "需测试"
+
+  # -------- L4: 国家标准 --------------------------------
+  - code: L4
+    name: 国家标准
+    category: >
+      国家市场监督管理总局（SAMR）/ 国家标准化管理委员会发布的
+      强制性/推荐性国家标准（GB/T）。
+      包括：个人信息安全规范（GB/T 35273）、
+      网络安全等级保护基本要求（GB/T 22239）、
+      数据安全能力成熟度模型（GB/T 37988）、
+      数据交易服务安全要求（GB/T）、
+      数据接口安全风险监测方法（GB/T）等。
+    sources:
+      - name: "SAMR国家标准全文公开系统"
+        url: "https://open.samr.gov.cn/"
+        search_url: "https://open.samr.gov.cn/bzgk/gb/newGbSearch"
+        type: html_api
+        keywords:
+          - "数据安全"
+          - "网络安全"
+          - "个人信息"
+          - "信息安全"
+          - "等级保护"
+          - "数据交易"
+          - "数据接口"
+        status: available
+        note: "119条记录，关键词搜索，直接解析HTML"
+
+  # -------- L5: 行业标准 --------------------------------
+  - code: L5
+    name: 行业标准
+    category: >
+      各行业主管部门发布的行业标准。
+      金融（JR/T）、电信（YD/T）、公安（GA/T）、
+      卫生（WS/T）、交通等数据安全相关行业标准。
+    sources:
+      - name: "金融数据标准化委员会"
+        url: "https://www.jrtsc.cn/"
+        type: html
+        status: untested
+        note: "JR/T金融行业标准，待测试"
+      - name: "通信标准定额网"
+        url: "https://www.ccsa.org.cn/"
+        type: html
+        status: untested
+        note: "YD/T电信行业标准，待测试"
+      - name: "公安部科技信息化局"
+        url: "https://www.mps.gov.cn/n6557558/"
+        type: html
+        status: untested
+        note: "GA/T公安行业标准，待测试"
+
+  # -------- L6: 地方文件 --------------------------------
+  - code: L6
+    name: 地方文件
+    category: >
+      各省市人民代表大会常务委员会或人民政府发布的地方性法规、
+      条例、办法、通知等文件。
+      上海、北京、广东、浙江、深圳等地已出台数据条例。
+    sources:
+      - name: "上海市数据条例"
+        url: "https://www.shanghai.gov.cn/"
+        type: html
+        status: untested
+        note: "上海市数据条例，待汇总地方数据条例清单"
+      - name: "广东省数据条例"
+        url: "https://www.gd.gov.cn/"
+        type: html
+        status: untested
+        note: "广东省数据条例，待测试"
+      - name: "浙江省数据条例"
+        url: "https://www.zj.gov.cn/"
+        type: html
+        status: untested
+        note: "浙江省数据条例，待测试"
+      - name: "深圳市数据条例"
+        url: "https://www.sz.gov.cn/"
+        type: html
+        status: untested
+        note: "深圳市数据条例，待测试"
+
+  # -------- L7: 地方标准 --------------------------------
+  - code: L7
+    name: 地方标准
+    category: >
+      各省市市场监督管理局 / 大数据局发布的地方标准（DB/T）。
+      地方标准信息服务平台收录的地方性数据安全标准。
+    sources:
+      - name: "各地标准信息公共服务平台"
+        url: "https://spc.org.cn/"
+        type: html
+        status: untested
+        note: "全国地方标准信息汇总，待测试"
+      - name: "北京市标准馆"
+        url: "https://bjtsc.github.io/"
+        type: html
+        status: untested
+        note: "北京市地方标准，待测试"
+      - name: "上海市质量和标准化研究院"
+        url: "https://www.sniso.com/"
+        type: html
+        status: untested
+        note: "上海市地方标准，待测试"
+
+  # -------- EDB: 执法案例库 ----------------------------
+  - code: EDB
+    name: 执法案例库
+    category: >
+      监管机构公开发布的执法案例、行政处罚决定书。
+      包括：国家互联网信息办公室、工业和信息化部、
+      公安部、市场监管总局等部门的执法记录和处罚决定。
+    sources:
+      - name: "CAC行政处罚公示"
+        url: "https://www.chinalaw.gov.cn/col/col709/index.html"
+        type: html
+        status: untested
+        note: "CAC行政处罚决定书，待测试"
+      - name: "工信部行政处罚"
+        url: "https://www.miit.gov.cn/search/search.html"
+        type: html
+        status: untested
+        note: "工信部行政处罚公示，待测试"
+      - name: "市场监管总局行政处罚"
+        url: "https://www.samr.gov.cn/"
+        type: html
+        status: untested
+        note: "市监总局行政处罚公示，待测试"
+
+  # -------- REF: 参考资料库 ----------------------------
+  - code: REF
+    name: 参考资料库
+    category: >
+      非强制性参考材料。
+      包括：指南、白皮书、蓝皮书、最佳实践、技术报告、
+      研究报告、研究成果等。
+    sources:
+      - name: "CAC政策法规库"
+        url: "https://www.chinalaw.gov.cn/col/col709/index.html"
+        type: html
+        status: untested
+        note: "含政策解读、指南文件，待测试"
+      - name: "中国信通院"
+        url: "https://www.caict.ac.cn/"
+        type: html
+        status: untested
+        note: "中国信息通信研究院白皮书/研究报告，待测试"
+      - name: "电子标准院"
+        url: "https://www.cesi.cn/"
+        type: html
+        status: untested
+        note: "电子标准化研究院技术报告，待测试"
+      - name: "赛博研究院"
+        url: "https://www.cyberspp.cn/"
+        type: html
+        status: untested
+        note: "网络安全产业研究报告，待测试"
