@@ -95,7 +95,8 @@ class LocalBackup:
                 return []
             date = versions[-1]
         else:
-            date = latest.resolve().parent.name  # 软链接指向的目录名即 date
+            # 软链接指向相对路径 ../../{level_code}/{date}，需要拼接 base 来解析
+            date = (self.base / latest.readlink()).resolve().parent.name  # 软链接指向的目录名即 date
 
         file_path = self._backup_file(level_code, date)
         if not file_path.exists():

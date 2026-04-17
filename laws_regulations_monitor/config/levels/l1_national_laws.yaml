@@ -91,7 +91,7 @@ fields:
     description: 基础法律/普通法律/附属法律/司法解释
 
   - field_name: 效力级别
-    field_id:效力级别
+    field_id: effectiveness_level
     type: single_select
     required: true
     description: 固定值"上位法/根本法"
