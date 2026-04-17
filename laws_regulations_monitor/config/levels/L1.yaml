@@ -1,0 +1,23 @@
+# L1 - 国家法律
+code: L1
+name: 国家法律
+description: "全国人民代表大会及其常务委员会制定的国家法律"
+
+lookback_days: 99999  # 全量回查
+
+sources:
+  - source_id: cac_l1
+    name: "网信办-国家法律"
+    type: json_api
+    method: cac_api
+    base_url: "https://www.cac.gov.cn"
+    api_url: "https://www.cac.gov.cn/cms/JsonList"
+    channel_code: "A09370301"
+    level: L1
+    reg_type: "法律"
+    author: "全国人大常委会"
+    rate_limit: 1
+    timeout: 15
+    retry: 3
+    lookback_days: 99999  # L1不过滤时间
+    status: available

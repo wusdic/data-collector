@@ -1,0 +1,200 @@
+# ============================================================
+# L5 行业标准 配置
+# 层级代码: L5 | 版本: 2026-04-17
+# ============================================================
+
+meta:
+  code: L5
+  name: 行业标准
+  version: "2026-04-17"
+  description: >
+    各行业主管部门发布的行业标准。
+    金融（JR/T）、电信（YD/T）、公安（GA/T）、
+    卫生（WS/T）、交通等数据安全相关行业标准。
+    通常为推荐性标准，在对应行业内具有强制参考效力。
+
+# ----------------------------------------------------------
+# 字段定义
+# ----------------------------------------------------------
+fields:
+  # 通用字段
+  - field_name: 法规标题
+    field_id: title
+    type: text
+    required: true
+    description: 标准名称
+
+  - field_name: 层级
+    field_id: level
+    type: text
+    required: true
+    description: 固定值 L5
+
+  - field_name: 法规类型
+    field_id: law_type
+    type: single_select
+    required: true
+    description: 行业标准
+
+  - field_name: 发文机关
+    field_id: author
+    type: text
+    required: true
+    description: 发布行业标准的主管部门
+
+  - field_name: 文号
+    field_id: doc_number
+    type: text
+    required: true
+    description: JR/T XXXX-XXXX / YD/T XXXX / GA/T XXXX-XXXX 等格式
+
+  - field_name: 发布日期
+    field_id: publish_date
+    type: date
+    required: true
+    description: 标准发布日期
+
+  - field_name: 生效日期
+    field_id: effective_date
+    type: date
+    required: false
+    description: 标准实施日期
+
+  - field_name: 状态
+    field_id: status
+    type: single_select
+    required: true
+    description: 现行/废止/修订
+
+  - field_name: 原文链接
+    field_id: source_url
+    type: hyperlink
+    required: true
+    description: 官方来源URL
+
+  - field_name: 标签
+    field_id: tags
+    type: multi_select
+    required: false
+    description: 关键词标签
+
+  # L5 独有字段
+  - field_name: 标准编号
+    field_id: standard_number
+    type: text
+    required: true
+    description: 如 JR/T 0197-2020，YD/T 3958-2021
+
+  - field_name: 标准代号
+    field_id: standard_prefix
+    type: single_select
+    required: true
+    description: JR/T（金融）/ YD/T（通信）/ GA/T（公安）/ WS/T（卫生）/ MT/T（煤炭）等
+
+  - field_name: 行业分类
+    field_id: industry
+    type: single_select
+    required: true
+    description: 金融/电信/公安/卫生/交通/教育/能源
+
+  - field_name: 归口单位
+    field_id: technical_committee
+    type: text
+    required: false
+    description: 归口技术委员会或主管部门
+
+  - field_name: 全文存储路径
+    field_id: local_path
+    type: text
+    required: false
+    description: 本地全文PDF路径
+
+# ----------------------------------------------------------
+# 信息源
+# ----------------------------------------------------------
+sources:
+  - source_id: miit_industry_std
+    name: 工信部行业标准
+    url: https://www.miit.gov.cn
+    search_url: https://www.miit.gov.cn/column/69
+    type: html_server
+    method: http_get
+    parser: parse_miit_std_html
+    status: untested
+    rate_limit: 3
+    encoding: utf-8
+    note: 工信部行业标准目录，需验证
+
+  - source_id: pbc_financial_std
+    name: 金融行业标准
+    url: https://www.jrtsc.cn
+    type: html_server
+    method: http_get
+    parser: parse_financial_std_html
+    status: untested
+    rate_limit: 3
+    note: JR/T 金融行业标准，待测试
+
+  - source_id: ccsa_telecom_std
+    name: 通信标准定额网
+    url: https://www.ccsa.org.cn
+    type: html_server
+    method: http_get
+    parser: parse_ccsa_html
+    status: untested
+    rate_limit: 3
+    note: YD/T 电信行业标准，待测试
+
+  - source_id: mps_security_std
+    name: 公安部科技信息化局
+    url: https://www.mps.gov.cn/n6557558/
+    type: html_server
+    method: http_get
+    parser: parse_mps_std_html
+    status: untested
+    rate_limit: 3
+    note: GA/T 公安行业标准，待测试
+
+  - source_id: cnist_std
+    name: 中国信息安全测评中心
+    url: https://www.cnist.cn
+    type: html_server
+    method: http_get
+    parser: parse_cnist_html
+    status: untested
+    rate_limit: 3
+    note: 信息安全测评/认证相关参考资料
+
+# ----------------------------------------------------------
+# 爬取参数
+# ----------------------------------------------------------
+crawl_params:
+  lookback_days: 365
+  keywords: [数据安全, 个人信息, 网络安全, 金融数据, 电信数据]
+  sort_by: publish_date
+  sort_order: desc
+  priority: medium
+  enable_full_text_download: true
+  file_types: [pdf]
+
+# ----------------------------------------------------------
+# 飞书多维表格字段映射
+# ----------------------------------------------------------
+bitable:
+  table_name: 法规主表
+  field_mappings:
+    法规标题: title
+    层级: level
+    法规类型: law_type
+    发文机关: author
+    文号: doc_number
+    发布日期: publish_date
+    生效日期: effective_date
+    状态: status
+    原文链接: source_url
+    标签: tags
+    标准编号: standard_number
+    标准代号: standard_prefix
+    行业分类: industry
+    归口单位: technical_committee
+    全文存储路径: local_path

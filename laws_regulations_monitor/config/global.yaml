@@ -1,0 +1,114 @@
+# ═══════════════════════════════════════════════════════════════════
+# 法规监控系统 - 全局配置
+# ═══════════════════════════════════════════════════════════════════
+
+# ─── 调度器配置 ────────────────────────────────────────────
+scheduler:
+  # 运行模式
+  #   auto      - 每日定时爬取 + 探索Agent守护（推荐）
+  #   scheduled - 仅每日定时爬取
+  #   manual    - 仅响应 API 触发
+  mode: "auto"
+
+  # 每日定时爬取时间（24小时制，Asia/Shanghai）
+  daily_run_time: "08:30"
+
+  # 时区
+  timezone: "Asia/Shanghai"
+
+  # 探索Agent运行间隔（小时）
+  discovery_interval_hours: 6
+
+# ─── 爬虫全局配置 ───────────────────────────────────────────
+crawler:
+  # 默认回查天数
+  lookback_days: 730
+
+  # 默认并发数
+  concurrent: 5
+
+  # 默认请求超时（秒）
+  timeout: 15
+
+  # 默认重试次数
+  retry: 3
+
+  # 默认请求间隔（秒）
+  rate_limit: 1.0
+
+  # User-Agent
+  user_agent: "Mozilla/5.0 (compatible; LawMonitor/2.0)"
+
+  # 编码探测顺序
+  encoding_order:
+    - utf-8
+    - gbk
+    - gb2312
+    - gb18030
+
+# ─── 发现Agent配置 ──────────────────────────────────────────
+discovery:
+  # 是否启用
+  enabled: true
+
+  # 探索触发阈值（发现多少条线索后触发补爬）
+  trigger_threshold: 3
+
+  # 立法动态关键词（每次运行从中选择未搜索的）
+  legislation_keywords:
+    - "数据安全法 征求意见"
+    - "个人信息保护法 实施细则"
+    - "网络安全法 修订"
+    - "关键信息基础设施保护条例 征求意见"
+    - "数据出境管理条例"
+    - "人工智能法 草案"
+    - "生成式AI 管理规定"
+    - "汽车数据安全管理若干规定"
+    - "工业和信息化领域数据安全管理办法"
+    - "金融数据安全分级指南"
+    - "网络数据安全管理条例"
+
+  # 行业新闻关键词
+  industry_keywords:
+    - "数据安全 监管 处罚"
+    - "App违法违规收集使用个人信息"
+    - "网络安全审查 典型案例"
+    - "数据出境 安全评估"
+    - "等保测评 通过"
+    - "数据分类分级 落地"
+
+# ─── 输出配置 ────────────────────────────────────────────────
+output:
+  # JSON 数据目录
+  data_dir: "data/raw"
+
+  # 结果保留天数
+  retention_days: 30
+
+  # 去重键
+  dedup_key: "title"
+
+# ─── 飞书通知配置 ───────────────────────────────────────────
+feishu:
+  enabled: false
+  # webhook_url: ""  # 可选，飞书机器人 webhook
+  notify_on_new: true
+  notify_on_error: true
+
+# ─── GitHub 同步配置 ─────────────────────────────────────────
+github:
+  owner: "wusdic"
+  repo: "data-collector"
+  branch: "main"
+  enabled: false
+  # token 从环境变量 GITHUB_TOKEN 读取，不要硬编码
+
+# ─── 飞书多维表格配置 ────────────────────────────────────────
+bitable:
+  app_token: "GLupbdKK7aCApgsxO7NcFIGbnJf"
+  enabled: false
+  tables:
+    法规主表:
+      table_id: "tblUkUwxCDBWKDdK"
+    执法案例库:
+      table_id: "tbljSjhjzu1LtQwX"

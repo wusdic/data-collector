@@ -1,0 +1,51 @@
+# L5 - 行业标准
+code: L5
+name: 行业标准
+description: "各行业主管部门发布的金融/电信/公安等行业标准"
+
+lookback_days: 730
+
+sources:
+  - source_id: miit_industry_std
+    name: "工信部行业标准"
+    type: html
+    method: http_get
+    base_url: "https://www.miit.gov.cn"
+    search_url: "https://www.miit.gov.cn/column/69"
+    level: L5
+    reg_type: "行业标准"
+    author: "工业和信息化部"
+    rate_limit: 3
+    encoding: utf-8
+    timeout: 15
+    retry: 3
+    status: untested
+
+  - source_id: tc260
+    name: "信安标委国家标准"
+    type: html
+    method: http_get
+    base_url: "https://www.tc260.org.cn"
+    search_url: "https://www.tc260.org.cn/zjxmxx/list.html"
+    level: L5
+    reg_type: "行业标准"
+    author: "全国信息安全标准化技术委员会"
+    rate_limit: 3
+    timeout: 15
+    retry: 3
+    status: untested
+
+  - source_id: pbc_industry_std
+    name: "金融行业标准"
+    type: html
+    method: http_get
+    base_url: "https://www.pbc.gov.cn"
+    search_url: "http://www.pbc.gov.cn/publish/renminying/331/index.html"
+    level: L5
+    reg_type: "金融行业标准"
+    author: "中国人民银行"
+    rate_limit: 3
+    encoding: gbk
+    timeout: 15
+    retry: 3
+    status: untested

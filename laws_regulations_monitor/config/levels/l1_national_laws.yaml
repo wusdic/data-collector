@@ -1,0 +1,159 @@
+# ============================================================
+# L1 国家法律 配置
+# 层级代码: L1 | 版本: 2026-04-17
+# ============================================================
+
+meta:
+  code: L1
+  name: 国家法律
+  version: "2026-04-17"
+  description: >
+    全国人民代表大会及其常务委员会制定的法律。
+    包含司法解释（最高法、最高检对法律的解释）作为对应法律的附属文件。
+    数据安全领域核心法律包括《网络安全法》《数据安全法》《个人信息保护法》等。
+
+# ----------------------------------------------------------
+# 字段定义
+# ----------------------------------------------------------
+fields:
+  # 通用字段（L1-L7 均包含）
+  - field_name: 法规标题
+    field_id: title
+    type: text
+    required: true
+    description: 法规文件标题
+
+  - field_name: 层级
+    field_id: level
+    type: text
+    required: true
+    description: 固定值 L1
+
+  - field_name: 法规类型
+    field_id: law_type
+    type: single_select
+    required: true
+    description: 固定值"法律"
+
+  - field_name: 发文机关
+    field_id: author
+    type: text
+    required: true
+    description: 制定机关名称，如全国人民代表大会常务委员会
+
+  - field_name: 文号
+    field_id: doc_number
+    type: text
+    required: false
+    description: 法律编号，如中华人民共和国主席令第一二三号
+
+  - field_name: 发布日期
+    field_id: publish_date
+    type: date
+    required: true
+    description: 官方发布日期
+
+  - field_name: 生效日期
+    field_id: effective_date
+    type: date
+    required: false
+    description: 法规生效日期
+
+  - field_name: 状态
+    field_id: status
+    type: single_select
+    required: true
+    description: 现行/废止/修订
+
+  - field_name: 原文链接
+    field_id: source_url
+    type: hyperlink
+    required: true
+    description: 官方来源URL
+
+  - field_name: 标签
+    field_id: tags
+    type: multi_select
+    required: false
+    description: 关键词标签，如网络安全法/数据安全法/个人信息保护法
+
+  # L1 独有三权分立字段
+  - field_name: 制定机关
+    field_id: legislative_body
+    type: single_select
+    required: true
+    description: 全国人大/全国人大常委会
+
+  - field_name: 法律分类
+    field_id: law_category
+    type: single_select
+    required: false
+    description: 基础法律/普通法律/附属法律/司法解释
+
+  - field_name: 效力级别
+    field_id:效力级别
+    type: single_select
+    required: true
+    description: 固定值"上位法/根本法"
+
+  - field_name: 全文存储路径
+    field_id: local_path
+    type: text
+    required: false
+    description: 本地全文PDF/DOC路径
+
+# ----------------------------------------------------------
+# 信息源
+# ----------------------------------------------------------
+sources:
+  - source_id: cac_l1
+    name: 网信办-国家法律
+    url: https://www.cac.gov.cn
+    search_url: https://www.cac.gov.cn/cms/JsonList
+    type: json_api
+    method: cac_api
+    parser: parse_cac_json
+    channel_code: A09370301
+    status: available
+    rate_limit: 1
+    note: CAC 国家法律数据库，全量 JSON API，实时更新，收录数据安全相关国家法律
+
+  - source_id: npc_flk
+    name: 全国人大法规数据库
+    url: https://flk.npc.gov.cn
+    type: html_spa
+    status: blocked
+    note: 纯 SPA，无法爬取，数据已被 CAC-L1 完全覆盖
+
+# ----------------------------------------------------------
+# 爬取参数
+# ----------------------------------------------------------
+crawl_params:
+  lookback_days: 365
+  keywords: []
+  sort_by: publish_date
+  sort_order: desc
+  priority: high
+  enable_full_text_download: true
+  file_types: [pdf, doc, docx]
+
+# ----------------------------------------------------------
+# 飞书多维表格字段映射
+# ----------------------------------------------------------
+bitable:
+  table_name: 法规主表
+  field_mappings:
+    法规标题: title
+    层级: level
+    法规类型: law_type
+    发文机关: author
+    文号: doc_number
+    发布日期: publish_date
+    生效日期: effective_date
+    状态: status
+    原文链接: source_url
+    标签: tags
+    制定机关: legislative_body
+    法律分类: law_category
+    效力级别: 效力级别
+    全文存储路径: local_path

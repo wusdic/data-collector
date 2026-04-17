@@ -1,0 +1,148 @@
+# ============================================================
+# 用户管理模块配置
+# 注意：飞书 app_token 和 table_id 待创建后填入
+# ============================================================
+
+app_token: "BDxubmpjiaayMvs0mbucIyZunQd"
+folder_token: ""
+url: "https://kcn2xs3isrl8.feishu.cn/base/BDxubmpjiaayMvs0mbucIyZunQd"
+
+tables:
+  users: "tbl6Tu5D2zGGN1t1"
+  companies: "tbleLOfGtDWlmXp9"
+  materials: "tbl7dNo2JPUJbAVV"
+  related_info: "tblDWdkfB82Bfsj8"
+
+# ============================================================
+# 各表字段定义
+# ============================================================
+
+table_schemas:
+
+  # ----------------------------------------------------------
+  # 用户信息表
+  # ----------------------------------------------------------
+  users:
+    table_name: "用户信息"
+    fields:
+      - name: "用户ID"
+        type: 11  # 人员
+        description: "飞书 open_id"
+        required: true
+      - name: "姓名"
+        type: 1   # 文本
+        description: "用户姓名"
+        required: true
+      - name: "邮箱"
+        type: 1   # 文本
+        description: "工作邮箱"
+      - name: "创建时间"
+        type: 1001  # 创建时间
+        description: "账号创建时间"
+
+  # ----------------------------------------------------------
+  # 单位信息表
+  # ----------------------------------------------------------
+  companies:
+    table_name: "单位信息"
+    fields:
+      - name: "单位名称"
+        type: 1
+        description: "工商注册全称"
+        required: true
+      - name: "所属行业"
+        type: 3  # 单选
+        options: ["金融", "医疗", "教育", "互联网", "政务", "交通", "能源", "零售", "物流", "制造业", "其他"]
+        description: "所属行业"
+        required: true
+      - name: "规模"
+        type: 3  # 单选
+        options: ["大型", "中型", "小型", "微型"]
+        description: "企业规模"
+      - name: "所在地-省"
+        type: 1
+        description: "所在省份"
+      - name: "所在地-市"
+        type: 1
+        description: "所在城市"
+      - name: "数据类型"
+        type: 4  # 多选
+        options: ["个人信息", "重要数据", "核心数据", "一般数据", "商业秘密"]
+        description: "涉及的数据类型"
+      - name: "用户群体特征"
+        type: 4  # 多选
+        options: ["无特殊群体", "未成年人", "老年人", "患者", "消费者", "会员用户"]
+        description: "用户群体是否有特殊类型"
+      - name: "是否有跨境业务"
+        type: 7  # 复选框
+        description: "是否有境外业务"
+      - name: "数据出境目的地"
+        type: 4  # 多选
+        options: ["无", "欧洲", "美国", "东南亚", "日韩", "一带一路沿线", "其他"]
+        description: "数据出境目的地"
+      - name: "合规负责人"
+        type: 11  # 人员
+        description: "合规负责人"
+      - name: "创建时间"
+        type: 1001  # 创建时间
+      - name: "备注"
+        type: 1
+
+  # ----------------------------------------------------------
+  # 单位材料库
+  # ----------------------------------------------------------
+  materials:
+    table_name: "单位材料库"
+    fields:
+      - name: "单位名称"
+        type: 1  # text (lookup需关联表后配置)
+        description: "关联单位名称"
+        required: true
+      - name: "材料名称"
+        type: 1
+        description: "材料文件名称"
+        required: true
+      - name: "材料类型"
+        type: 3  # 单选
+        options: ["营业执照", "业务说明", "数据清单", "隐私政策", "用户协议", "安全评估报告", "数据分类分级报告", "应急响应预案", "其他"]
+      - name: "上传时间"
+        type: 1001  # 创建时间
+      - name: "文件"
+        type: 17  # 附件
+
+  # ----------------------------------------------------------
+  # 关联信息库
+  # ----------------------------------------------------------
+  related_info:
+    table_name: "关联信息库"
+    fields:
+      - name: "单位名称"
+        type: 1
+        description: "关联单位名称"
+        required: true
+      - name: "信息类型"
+        type: 3  # 单选
+        options: ["监管处罚", "行业动态", "媒体相关报道", "同行处罚对比", "安全事件", "监管问询函", "其他"]
+      - name: "信息标题"
+        type: 1
+        description: "信息内容标题"
+        required: true
+      - name: "信息来源"
+        type: 1
+        description: "来源机构/媒体"
+      - name: "来源URL"
+        type: 15  # 超链接
+        description: "原文链接"
+      - name: "发布日期"
+        type: 5  # 日期
+      - name: "摘要"
+        type: 1
+        description: "简要内容"
+      - name: "相关法规"
+        type: 1
+        description: "关联的L1-L7法规名称"
+      - name: "风险等级"
+        type: 3  # 单选
+        options: ["高", "中", "低"]
+      - name: "入库时间"
+        type: 1001  # 创建时间

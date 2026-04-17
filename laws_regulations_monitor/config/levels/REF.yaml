@@ -1,0 +1,63 @@
+# REF - 参考资料库
+code: REF
+name: 参考资料库
+description: "指南、白皮书、蓝皮书、最佳实践、技术报告等参考资料"
+
+lookback_days: 365
+
+sources:
+  - source_id: cac_policy_docs
+    name: "CAC政策法规库"
+    type: html
+    method: http_get
+    base_url: "https://www.cac.gov.cn"
+    search_url: "https://www.cac.gov.cn/column/709/index.html"
+    level: REF
+    reg_type: "参考资料"
+    author: "国家互联网信息办公室"
+    rate_limit: 2
+    timeout: 15
+    retry: 3
+    status: untested
+
+  - source_id: caict_docs
+    name: "中国信通院白皮书"
+    type: html
+    method: http_get
+    base_url: "https://www.caict.ac.cn"
+    search_url: "https://www.caict.ac.cn/"
+    level: REF
+    reg_type: "研究报告"
+    author: "中国信息通信研究院"
+    rate_limit: 3
+    timeout: 15
+    retry: 3
+    status: untested
+
+  - source_id: cesi_docs
+    name: "电子标准院技术报告"
+    type: html
+    method: http_get
+    base_url: "https://www.cesi.cn"
+    search_url: "https://www.cesi.cn/"
+    level: REF
+    reg_type: "技术报告"
+    author: "中国电子技术标准化研究院"
+    rate_limit: 3
+    timeout: 15
+    retry: 3
+    status: untested
+
+  - source_id: cyberspp_docs
+    name: "赛博研究院报告"
+    type: html
+    method: http_get
+    base_url: "https://www.cyberspp.cn"
+    search_url: "https://www.cyberspp.cn/"
+    level: REF
+    reg_type: "研究报告"
+    author: "赛博研究院"
+    rate_limit: 3
+    timeout: 15
+    retry: 3
+    status: untested

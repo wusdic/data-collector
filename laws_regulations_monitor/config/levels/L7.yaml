@@ -1,0 +1,46 @@
+# L7 - 地方标准
+code: L7
+name: 地方标准
+description: "各省市监局/大数据局发布的地方标准"
+
+lookback_days: 730
+
+sources:
+  - source_id: local_std_platform
+    name: "地方标准信息服务平台"
+    type: html
+    method: http_get
+    base_url: "https://spc.org.cn"
+    search_url: "https://spc.org.cn/"
+    level: L7
+    reg_type: "地方标准"
+    rate_limit: 3
+    timeout: 15
+    retry: 3
+    status: untested
+
+  - source_id: local_std_beijing
+    name: "北京市地方标准"
+    type: html
+    method: http_get
+    base_url: "https://bjtsc.github.io"
+    search_url: "https://bjtsc.github.io/"
+    level: L7
+    reg_type: "地方标准"
+    rate_limit: 3
+    timeout: 15
+    retry: 3
+    status: untested
+
+  - source_id: local_std_shanghai
+    name: "上海市地方标准"
+    type: html
+    method: http_get
+    base_url: "https://www.sniso.com"
+    search_url: "https://www.sniso.com/"
+    level: L7
+    reg_type: "地方标准"
+    rate_limit: 3
+    timeout: 15
+    retry: 3
+    status: untested

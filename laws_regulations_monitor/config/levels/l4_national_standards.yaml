@@ -1,0 +1,196 @@
+# ============================================================
+# L4 国家标准 配置
+# 层级代码: L4 | 版本: 2026-04-17
+# ============================================================
+
+meta:
+  code: L4
+  name: 国家标准
+  version: "2026-04-17"
+  description: >
+    国家市场监督管理总局（SAMR）/ 国家标准化管理委员会发布的
+    强制性/推荐性国家标准（GB/T）。
+    包括：个人信息安全规范（GB/T 35273）、
+    网络安全等级保护基本要求（GB/T 22239）、
+    数据安全能力成熟度模型（GB/T 37988）、
+    数据交易服务安全要求（GB/T）、数据接口安全风险监测方法（GB/T）等。
+
+# ----------------------------------------------------------
+# 字段定义
+# ----------------------------------------------------------
+fields:
+  # 通用字段
+  - field_name: 法规标题
+    field_id: title
+    type: text
+    required: true
+    description: 标准名称
+
+  - field_name: 层级
+    field_id: level
+    type: text
+    required: true
+    description: 固定值 L4
+
+  - field_name: 法规类型
+    field_id: law_type
+    type: single_select
+    required: true
+    description: 固定值"国家标准"
+
+  - field_name: 发文机关
+    field_id: author
+    type: text
+    required: true
+    description: 国家市场监督管理总局 / 国家标准化管理委员会
+
+  - field_name: 文号
+    field_id: doc_number
+    type: text
+    required: true
+    description: GB/T XXXXX-XXXX 格式的标准编号
+
+  - field_name: 发布日期
+    field_id: publish_date
+    type: date
+    required: true
+    description: 标准发布日期
+
+  - field_name: 生效日期
+    field_id: effective_date
+    type: date
+    required: false
+    description: 标准实施日期
+
+  - field_name: 状态
+    field_id: status
+    type: single_select
+    required: true
+    description: 现行/废止/修订
+
+  - field_name: 原文链接
+    field_id: source_url
+    type: hyperlink
+    required: true
+    description: 官方来源URL
+
+  - field_name: 标签
+    field_id: tags
+    type: multi_select
+    required: false
+    description: 关键词标签
+
+  # L4 独有大字段
+  - field_name: 标准编号
+    field_id: standard_number
+    type: text
+    required: true
+    description: GB/T XXXXX-XXXX 格式，如 GB/T 35273-2020
+
+  - field_name: 标准性质
+    field_id: standard_nature
+    type: single_select
+    required: true
+    description: 强制性标准（GB）/ 推荐性标准（GB/T）
+
+  - field_name: ICS分类号
+    field_id: ics_code
+    type: text
+    required: false
+    description: 国际标准分类号，如 35.040
+
+  - field_name: CCS分类号
+    field_id: ccs_code
+    type: text
+    required: false
+    description: 中国标准分类号
+
+  - field_name: 归口单位
+    field_id: technical_committee
+    type: text
+    required: false
+    description: 归口技术委员会，如 TC260（全国信息安全标准化技术委员会）
+
+  - field_name: 起草单位
+    field_id: drafting_unit
+    type: text
+    required: false
+    description: 标准起草单位
+
+  - field_name: 全文存储路径
+    field_id: local_path
+    type: text
+    required: false
+    description: 本地全文PDF路径
+
+# ----------------------------------------------------------
+# 信息源
+# ----------------------------------------------------------
+sources:
+  - source_id: samr_standards
+    name: 国家标准全文公开系统
+    url: https://open.samr.gov.cn
+    search_url: https://open.samr.gov.cn/bzgk/gb/newGbSearch
+    type: html_api
+    method: samr_search
+    parser: parse_samr_html
+    status: available
+    rate_limit: 1
+    concurrent: 5
+    note: 119条记录，关键词搜索，直接解析HTML
+
+  - source_id: tc260
+    name: 信安标委国家标准
+    url: https://www.tc260.org.cn
+    type: html_server
+    method: http_get
+    parser: parse_tc260_html
+    status: untested
+    rate_limit: 3
+    note: 全国信息安全标准化技术委员会，在研/发布标准
+
+# ----------------------------------------------------------
+# 爬取参数
+# ----------------------------------------------------------
+crawl_params:
+  lookback_days: 365
+  keywords:
+    - 数据安全
+    - 网络安全
+    - 个人信息
+    - 信息安全
+    - 等级保护
+    - 数据交易
+    - 数据接口
+    - 人工智能
+    - 密码
+  sort_by: publish_date
+  sort_order: desc
+  priority: high
+  enable_full_text_download: true
+  file_types: [pdf]
+  samr_search_params_template: "p.p1=0&p.p90=circulation_date&p.p91=desc&p.p2={keyword}&page={page}"
+
+# ----------------------------------------------------------
+# 飞书多维表格字段映射
+# ----------------------------------------------------------
+bitable:
+  table_name: 法规主表
+  field_mappings:
+    法规标题: title
+    层级: level
+    法规类型: law_type
+    发文机关: author
+    文号: doc_number
+    发布日期: publish_date
+    生效日期: effective_date
+    状态: status
+    原文链接: source_url
+    标签: tags
+    标准编号: standard_number
+    标准性质: standard_nature
+    ICS分类号: ics_code
+    CCS分类号: ccs_code
+    归口单位: technical_committee
+    起草单位: drafting_unit
+    全文存储路径: local_path

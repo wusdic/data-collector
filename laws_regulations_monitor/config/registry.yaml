@@ -1,0 +1,195 @@
+# ============================================================
+# 法规监控层级注册表
+# 7层 + 2库 全量层级索引
+# 版本: 2026-04-17
+# ============================================================
+
+registry_version: "2026-04-17"
+description: >
+  法规监控系统全部9个层级的配置索引。
+  每个层级对应 config/levels/ 目录下的独立 YAML 配置文件。
+
+# ----------------------------------------------------------
+# 层级索引
+# ----------------------------------------------------------
+levels:
+
+  - level_code: L1
+    level_name: 国家法律
+    config_file: levels/l1_national_laws.yaml
+    priority: high
+    source_status:
+      cac_l1: available
+      npc_flk: blocked
+    bitable_table: 法规主表
+    record_count_estimate: "~15部"
+    note: 全国人大及其常委会制定的法律，司法解释
+
+  - level_code: L2
+    level_name: 行政法规
+    config_file: levels/l2_admin_regulations.yaml
+    priority: high
+    source_status:
+      cac_l2: available
+      gov_council: available
+    bitable_table: 法规主表
+    record_count_estimate: "~20部"
+    note: 国务院制定，数据安全领域核心上层建筑
+
+  - level_code: L3
+    level_name: 部门规章
+    config_file: levels/l3_department_rules.yaml
+    priority: high
+    source_status:
+      cac_l3: available
+      miit_reg: untested
+      mps_reg: untested
+      pbc_reg: untested
+      samr_reg: untested
+    bitable_table: 法规主表
+    record_count_estimate: "~60条"
+    note: 各部委规章及规范性文件，工信/公安/网信/金融多部委来源
+
+  - level_code: L4
+    level_name: 国家标准
+    config_file: levels/l4_national_standards.yaml
+    priority: high
+    source_status:
+      samr_standards: available
+      tc260: untested
+    bitable_table: 法规主表
+    record_count_estimate: "~200条"
+    note: GB/T 国家标准，SAMR 全文公开系统，119条已验证
+
+  - level_code: L5
+    level_name: 行业标准
+    config_file: levels/l5_industry_standards.yaml
+    priority: medium
+    source_status:
+      miit_industry_std: untested
+      pbc_financial_std: untested
+      ccsa_telecom_std: untested
+      mps_security_std: untested
+      cnist_std: untested
+    bitable_table: 法规主表
+    record_count_estimate: "~300条"
+    note: JR/T金融/YD/T电信/GA/T公安等多行业标准
+
+  - level_code: L6
+    level_name: 地方文件
+    config_file: levels/l6_local_documents.yaml
+    priority: medium
+    source_status:
+      local_shanghai: untested
+      local_beijing: untested
+      local_guangdong: untested
+      local_zhejiang: untested
+      local_shenzhen: untested
+      local_other: untested
+    bitable_table: 法规主表
+    record_count_estimate: "~50条"
+    note: 各省市数据条例/地方性法规，待扩展全国各省市
+
+  - level_code: L7
+    level_name: 地方标准
+    config_file: levels/l7_local_standards.yaml
+    priority: medium
+    source_status:
+      local_std_platform: untested
+      local_std_beijing: untested
+      local_std_shanghai: untested
+      local_std_guangdong: untested
+    bitable_table: 法规主表
+    record_count_estimate: "~100条"
+    note: DB/T 地方标准，各省市监局/大数据局发布
+
+  - level_code: EDB
+    level_name: 执法案例库
+    config_file: levels/edb_enforcement_cases.yaml
+    priority: high
+    source_status:
+      cac_enforcement: untested
+      miit_enforcement: untested
+      samr_enforcement: untested
+      mps_enforcement: untested
+      spp_enforcement: untested
+      spc_enforcement: untested
+    bitable_table: 执法案例库
+    record_count_estimate: "~200条"
+    note: 行政处罚决定书+典型案例，公检法市监多部门来源
+
+  - level_code: REF
+    level_name: 参考资料库
+    config_file: levels/ref_reference_materials.yaml
+    priority: low
+    source_status:
+      cac_policy_docs: untested
+      caict_docs: untested
+      cesi_docs: untested
+      cyberspp_docs: untested
+      ncac_docs: untested
+      miit_guide: untested
+      cnist_docs: untested
+    bitable_table: 参考资料库
+    record_count_estimate: "~150条"
+    note: 指南/白皮书/研究报告/最佳实践，非强制性参考资料
+
+# ----------------------------------------------------------
+# 层级优先级定义
+# ----------------------------------------------------------
+priority_order:
+  high:
+    - L1   # 国家法律
+    - L2   # 行政法规
+    - L3   # 部门规章
+    - L4   # 国家标准
+    - EDB  # 执法案例库
+  medium:
+    - L5   # 行业标准
+    - L6   # 地方文件
+    - L7   # 地方标准
+  low:
+    - REF  # 参考资料库
+
+# ----------------------------------------------------------
+# 层级 → 飞书多维表格映射
+# ----------------------------------------------------------
+bitable_tables:
+  法规主表:
+    app_token: GLupbdKK7aCApgsxO7NcFIGbnJf
+    table_id: tblUkUwxCDBWKDdK
+    used_by_levels:
+      - L1
+      - L2
+      - L3
+      - L4
+      - L5
+      - L6
+      - L7
+
+  执法案例库:
+    app_token: GLupbdKK7aCApgsxO7NcFIGbnJf
+    table_id: tbljSjhjzu1LtQwX
+    used_by_levels:
+      - EDB
+
+  参考资料库:
+    app_token: GLupbdKK7aCApgsxO7NcFIGbnJf
+    table_id: ""
+    used_by_levels:
+      - REF
+    note: table_id 待确认
+
+# ----------------------------------------------------------
+# 全局爬取顺序（按优先级）
+# ----------------------------------------------------------
+crawl_order:
+  - L1    # 国家法律（高优先级）
+  - L2    # 行政法规（高优先级）
+  - L3    # 部门规章（高优先级）
+  - L4    # 国家标准（高优先级）
+  - EDB   # 执法案例库（高优先级）
+  - L5    # 行业标准（中等优先级）
+  - L6    # 地方文件（中等优先级）
+  - L7    # 地方标准（中等优先级）
+  - REF   # 参考资料库（低优先级）

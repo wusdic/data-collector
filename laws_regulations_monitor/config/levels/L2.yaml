@@ -1,0 +1,38 @@
+# L2 - 行政法规
+code: L2
+name: 行政法规
+description: "国务院制定的行政法规"
+
+lookback_days: 3650  # 10年回查
+
+sources:
+  - source_id: cac_l2
+    name: "网信办-行政法规"
+    type: json_api
+    method: cac_api
+    base_url: "https://www.cac.gov.cn"
+    api_url: "https://www.cac.gov.cn/cms/JsonList"
+    channel_code: "A09370302"
+    level: L2
+    reg_type: "行政法规"
+    author: "国务院"
+    rate_limit: 1
+    timeout: 15
+    retry: 3
+    lookback_days: 3650
+    status: available
+
+  - source_id: gov_council
+    name: "国务院政策文件"
+    type: html
+    method: http_get
+    base_url: "https://www.gov.cn"
+    search_url: "https://www.gov.cn/zhengce/"
+    level: L2
+    reg_type: "行政法规"
+    author: "国务院"
+    rate_limit: 2
+    encoding: gbk
+    timeout: 15
+    retry: 3
+    status: untested

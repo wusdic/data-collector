@@ -1,0 +1,50 @@
+# EDB - 执法案例库
+code: EDB
+name: 执法案例库
+description: "监管机构公开发布的执法案例和行政处罚决定书"
+
+lookback_days: 730
+
+sources:
+  - source_id: cac_enforcement
+    name: "网信办行政处罚公示"
+    type: html
+    method: http_get
+    base_url: "https://www.cac.gov.cn"
+    search_url: "https://www.cac.gov.cn/column/709/index.html"
+    level: EDB
+    reg_type: "执法案例"
+    author: "国家互联网信息办公室"
+    rate_limit: 2
+    timeout: 15
+    retry: 3
+    status: untested
+
+  - source_id: miit_enforcement
+    name: "工信部行政处罚"
+    type: html
+    method: http_get
+    base_url: "https://www.miit.gov.cn"
+    search_url: "https://www.miit.gov.cn/column/4634/"
+    level: EDB
+    reg_type: "行政处罚"
+    author: "工业和信息化部"
+    rate_limit: 3
+    encoding: utf-8
+    timeout: 15
+    retry: 3
+    status: untested
+
+  - source_id: samr_enforcement
+    name: "市场监管总局行政处罚"
+    type: html
+    method: http_get
+    base_url: "https://www.samr.gov.cn"
+    search_url: "https://www.samr.gov.cn/"
+    level: EDB
+    reg_type: "行政处罚"
+    author: "国家市场监督管理总局"
+    rate_limit: 3
+    timeout: 15
+    retry: 3
+    status: untested

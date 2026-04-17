@@ -1,0 +1,194 @@
+# ============================================================
+# L3 部门规章 配置
+# 层级代码: L3 | 版本: 2026-04-17
+# ============================================================
+
+meta:
+  code: L3
+  name: 部门规章
+  version: "2026-04-17"
+  description: >
+    国家部委（国家互联网信息办公室、工业和信息化部、公安部、
+    商务部等）发布的部门规章和规范性文件。
+    包括：App违法违规收集使用个人信息行为认定方法、
+    网络安全审查办法、汽车数据安全管理若干规定、
+    工业和信息化领域数据安全管理办法等。
+
+# ----------------------------------------------------------
+# 字段定义
+# ----------------------------------------------------------
+fields:
+  # 通用字段
+  - field_name: 法规标题
+    field_id: title
+    type: text
+    required: true
+    description: 法规文件标题
+
+  - field_name: 层级
+    field_id: level
+    type: text
+    required: true
+    description: 固定值 L3
+
+  - field_name: 法规类型
+    field_id: law_type
+    type: single_select
+    required: true
+    description: 部门规章 / 规范性文件 / 部门公告
+
+  - field_name: 发文机关
+    field_id: author
+    type: text
+    required: true
+    description: 工信部/公安部/网信办/商务部等
+
+  - field_name: 文号
+    field_id: doc_number
+    type: text
+    required: false
+    description: 部令第XX号 / 工信部公告[XXXX]XX号
+
+  - field_name: 发布日期
+    field_id: publish_date
+    type: date
+    required: true
+    description: 官方发布日期
+
+  - field_name: 生效日期
+    field_id: effective_date
+    type: date
+    required: false
+    description: 法规生效日期
+
+  - field_name: 状态
+    field_id: status
+    type: single_select
+    required: true
+    description: 现行/废止/修订
+
+  - field_name: 原文链接
+    field_id: source_url
+    type: hyperlink
+    required: true
+    description: 官方来源URL
+
+  - field_name: 标签
+    field_id: tags
+    type: multi_select
+    required: false
+    description: 关键词标签
+
+  # L3 独有字段
+  - field_name: 适用行业
+    field_id: applicable_industry
+    type: multi_select
+    required: false
+    description: 适用行业，如互联网/金融/汽车/医疗/教育/交通
+
+  - field_name: 监管领域
+    field_id: regulatory_domain
+    type: multi_select
+    required: false
+    description: 个人信息/数据安全/网络安全/关键信息基础设施
+
+  - field_name: 全文存储路径
+    field_id: local_path
+    type: text
+    required: false
+    description: 本地全文PDF/DOC路径
+
+# ----------------------------------------------------------
+# 信息源
+# ----------------------------------------------------------
+sources:
+  - source_id: cac_l3
+    name: 网信办-部门规章
+    url: https://www.cac.gov.cn
+    search_url: https://www.cac.gov.cn/cms/JsonList
+    type: json_api
+    method: cac_api
+    parser: parse_cac_json
+    channel_codes:
+      - A09370303  # 部门规章
+      - A09370305  # 规范性文件
+    status: available
+    rate_limit: 1
+    note: CAC 部门规章数据库，JSON API，同时收录规范性文件
+
+  - source_id: miit_reg
+    name: 工信部政策法规
+    url: https://www.miit.gov.cn
+    search_url: https://www.miit.gov.cn/column/67
+    type: html_server
+    method: http_get
+    parser: parse_miit_html
+    status: untested
+    rate_limit: 3
+    encoding: utf-8
+    note: 工信部法规页面，需测试具体URL
+
+  - source_id: mps_reg
+    name: 公安部网络安全法规
+    url: https://www.mps.gov.cn
+    type: html_server
+    method: http_get
+    parser: parse_mps_html
+    status: untested
+    rate_limit: 3
+    note: 公安部网络安全/个人信息保护相关，需测试
+
+  - source_id: pbc_reg
+    name: 央行金融法规
+    url: http://www.pbc.gov.cn
+    search_url: http://www.pbc.gov.cn/publish/renminying/331/index.html
+    type: html_server
+    method: http_get
+    parser: parse_pbc_html
+    status: untested
+    rate_limit: 3
+    encoding: gbk
+    note: 央行金融数据安全相关法规
+
+  - source_id: samr_reg
+    name: 市场监管总局部门规章
+    url: http://openstd.samr.gov.cn
+    search_url: http://openstd.samr.gov.cn/bzgk/gb/
+    type: html_server
+    method: http_get
+    parser: parse_samr_gb_html
+    status: untested
+    rate_limit: 2
+    note: 市场监管总局部门规章/公告，需测试
+
+# ----------------------------------------------------------
+# 爬取参数
+# ----------------------------------------------------------
+crawl_params:
+  lookback_days: 180
+  keywords: [数据安全, 个人信息, 网络安全, App, 汽车数据, 工业数据, 金融数据]
+  sort_by: publish_date
+  sort_order: desc
+  priority: high
+  enable_full_text_download: true
+  file_types: [pdf, doc, docx]
+
+# ----------------------------------------------------------
+# 飞书多维表格字段映射
+# ----------------------------------------------------------
+bitable:
+  table_name: 法规主表
+  field_mappings:
+    法规标题: title
+    层级: level
+    法规类型: law_type
+    发文机关: author
+    文号: doc_number
+    发布日期: publish_date
+    生效日期: effective_date
+    状态: status
+    原文链接: source_url
+    标签: tags
+    适用行业: applicable_industry
+    监管领域: regulatory_domain
+    全文存储路径: local_path

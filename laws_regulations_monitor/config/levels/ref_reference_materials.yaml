@@ -1,0 +1,200 @@
+# ============================================================
+# REF 参考资料库 配置
+# 层级代码: REF | 版本: 2026-04-17
+# ============================================================
+
+meta:
+  code: REF
+  name: 参考资料库
+  version: "2026-04-17"
+  description: >
+    非强制性参考材料。
+    包括：指南、白皮书、蓝皮书、最佳实践、技术报告、
+    研究报告、研究成果等。
+    参考资料库供合规建设参考，虽无法律效力，但对理解监管趋势
+    和技术要求具有重要价值。
+
+# ----------------------------------------------------------
+# 字段定义
+# ----------------------------------------------------------
+fields:
+  # 通用字段
+  - field_name: 资料标题
+    field_id: title
+    type: text
+    required: true
+    description: 资料名称
+
+  - field_name: 层级
+    field_id: level
+    type: text
+    required: true
+    description: 固定值 REF
+
+  - field_name: 资料类型
+    field_id: doc_type
+    type: single_select
+    required: true
+    description: 指南/白皮书/蓝皮书/最佳实践/技术报告/研究报告/研究成果/解读
+
+  - field_name: 发布机构
+    field_id: author
+    type: text
+    required: true
+    description: 发布指南/报告的机构名称
+
+  - field_name: 发布日期
+    field_id: publish_date
+    type: date
+    required: true
+    description: 资料发布日期
+
+  - field_name: 原文链接
+    field_id: source_url
+    type: hyperlink
+    required: true
+    description: 官方来源URL
+
+  - field_name: 标签
+    field_id: tags
+    type: multi_select
+    required: false
+    description: 关键词标签
+
+  # REF 独有大字段
+  - field_name: 关联法规
+    field_id: related_laws
+    type: multi_select
+    required: false
+    description: 所参考或解读的具体法规（层级或名称）
+
+  - field_name: 摘要
+    field_id: summary
+    type: text
+    required: false
+    description: 资料主要内容摘要
+
+  - field_name: 适用行业
+    field_id: applicable_industry
+    type: multi_select
+    required: false
+    description: 指南适用的行业范围
+
+  - field_name: 版本号
+    field_id: version
+    type: text
+    required: false
+    description: 指南/标准的版本，如 V1.0 / 2023版
+
+  - field_name: 全
+    field_id: local_path
+    type: text
+    required: false
+    description: 本地全文PDF/DOC路径
+
+# ----------------------------------------------------------
+# 信息源
+# ----------------------------------------------------------
+sources:
+  - source_id: cac_policy_docs
+    name: 网信办政策法规库
+    url: https://www.chinalaw.gov.cn
+    type: html_server
+    method: http_get
+    parser: parse_cac_policy_html
+    status: untested
+    rate_limit: 3
+    note: 含政策解读、指南文件，待测试
+
+  - source_id: caict_docs
+    name: 中国信通院
+    url: https://www.caict.ac.cn
+    type: html_server
+    method: http_get
+    parser: parse_caict_html
+    status: untested
+    rate_limit: 3
+    note: 中国信息通信研究院白皮书/研究报告，待测试
+
+  - source_id: cesi_docs
+    name: 电子标准院
+    url: https://www.cesi.cn
+    type: html_server
+    method: http_get
+    parser: parse_cesi_html
+    status: untested
+    rate_limit: 3
+    note: 电子标准化研究院技术报告，待测试
+
+  - source_id: cyberspp_docs
+    name: 赛博研究院
+    url: https://www.cyberspp.cn
+    type: html_server
+    method: http_get
+    parser: parse_cyberspp_html
+    status: untested
+    rate_limit: 3
+    note: 网络安全产业研究报告，待测试
+
+  - source_id: ncac_docs
+    name: 国家保密局政策法规
+    url: http://www.ncac.gov.cn
+    search_url: http://www.ncac.gov.cn/column/21
+    type: html_server
+    method: http_get
+    parser: parse_ncac_html
+    status: untested
+    rate_limit: 3
+    encoding: gbk
+    note: 国家保密局政策法规文件
+
+  - source_id: miit_guide
+    name: 工信部指导性文件
+    url: https://www.miit.gov.cn
+    type: html_server
+    method: http_get
+    parser: parse_miit_guide_html
+    status: untested
+    rate_limit: 3
+    note: 工信部指导性文件/指南，待测试
+
+  - source_id: cnist_docs
+    name: 中国信息安全测评中心
+    url: https://www.cnist.cn
+    type: html_server
+    method: http_get
+    parser: parse_cnist_html
+    status: untested
+    rate_limit: 3
+    note: 信息安全测评/认证相关参考资料
+
+# ----------------------------------------------------------
+# 爬取参数
+# ----------------------------------------------------------
+crawl_params:
+  lookback_days: 730
+  keywords: [数据安全指南, 个人信息保护指南, 网络安全最佳实践, 白皮书, 技术报告, 研究报告, 合规指南, 个人信息安全规范, 数据安全能力]
+  sort_by: publish_date
+  sort_order: desc
+  priority: low
+  enable_full_text_download: true
+  file_types: [pdf]
+
+# ----------------------------------------------------------
+# 飞书多维表格字段映射
+# ----------------------------------------------------------
+bitable:
+  table_name: 参考资料库
+  field_mappings:
+    资料标题: title
+    层级: level
+    资料类型: doc_type
+    发布机构: author
+    发布日期: publish_date
+    原文链接: source_url
+    标签: tags
+    关联法规: related_laws
+    摘要: summary
+    适用行业: applicable_industry
+    版本号: version
+    全文存储路径: local_path

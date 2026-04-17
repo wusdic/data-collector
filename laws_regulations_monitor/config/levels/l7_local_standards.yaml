@@ -1,0 +1,181 @@
+# ============================================================
+# L7 地方标准 配置
+# 层级代码: L7 | 版本: 2026-04-17
+# ============================================================
+
+meta:
+  code: L7
+  name: 地方标准
+  version: "2026-04-17"
+  description: >
+    各省市市场监督管理局 / 大数据局发布的地方标准（DB/T）。
+    地方标准信息服务平台收录的地方性数据安全标准。
+    通常在制定地方性法规时作为参考依据，在对应区域内具有推荐性效力。
+
+# ----------------------------------------------------------
+# 字段定义
+# ----------------------------------------------------------
+fields:
+  # 通用字段
+  - field_name: 法规标题
+    field_id: title
+    type: text
+    required: true
+    description: 标准名称
+
+  - field_name: 层级
+    field_id: level
+    type: text
+    required: true
+    description: 固定值 L7
+
+  - field_name: 法规类型
+    field_id: law_type
+    type: single_select
+    required: true
+    description: 固定值"地方标准"
+
+  - field_name: 发文机关
+    field_id: author
+    type: text
+    required: true
+    description: 各省市市场监督管理局/大数据局/质量技术监督局
+
+  - field_name: 文号
+    field_id: doc_number
+    type: text
+    required: true
+    description: DBXX/ TXXXX-XXXX 格式地方标准编号
+
+  - field_name: 发布日期
+    field_id: publish_date
+    type: date
+    required: true
+    description: 标准发布日期
+
+  - field_name: 生效日期
+    field_id: effective_date
+    type: date
+    required: false
+    description: 标准实施日期
+
+  - field_name: 状态
+    field_id: status
+    type: single_select
+    required: true
+    description: 现行/废止/修订
+
+  - field_name: 原文链接
+    field_id: source_url
+    type: hyperlink
+    required: true
+    description: 官方来源URL
+
+  - field_name: 标签
+    field_id: tags
+    type: multi_select
+    required: false
+    description: 关键词标签
+
+  # L7 独有大字段
+  - field_name: 标准编号
+    field_id: standard_number
+    type: text
+    required: true
+    description: DBXX-XXXX / DB/T XX-XXXX 格式
+
+  - field_name: 标准代号
+    field_id: standard_prefix
+    type: single_select
+    required: true
+    description: DB（地方标准）/ DB/T（推荐性地方标准）
+
+  - field_name: 省份/城市
+    field_id: region
+    type: single_select
+    required: true
+    description: 省市名称，如北京市/上海市/广东省
+
+  - field_name: 全文存储路径
+    field_id: local_path
+    type: text
+    required: false
+    description: 本地全文PDF路径
+
+# ----------------------------------------------------------
+# 信息源
+# ----------------------------------------------------------
+sources:
+  - source_id: local_std_platform
+    name: 地方标准信息服务平台
+    url: https://spc.org.cn
+    type: html_server
+    method: http_get
+    parser: parse_spc_html
+    status: untested
+    rate_limit: 3
+    note: 全国地方标准信息汇总，待测试
+
+  - source_id: local_std_beijing
+    name: 北京市标准馆
+    url: https://bjtsc.github.io
+    type: html_server
+    method: http_get
+    parser: parse_beijing_std_html
+    status: untested
+    rate_limit: 3
+    note: 北京市地方标准，待测试
+
+  - source_id: local_std_shanghai
+    name: 上海市质量和标准化研究院
+    url: https://www.sniso.com
+    type: html_server
+    method: http_get
+    parser: parse_shanghai_std_html
+    status: untested
+    rate_limit: 3
+    note: 上海市地方标准，待测试
+
+  - source_id: local_std_guangdong
+    name: 广东省标准信息服务平台
+    url: https://www.gdqbts.gov.cn
+    type: html_server
+    method: http_get
+    parser: parse_guangdong_std_html
+    status: untested
+    rate_limit: 3
+    note: 广东省地方标准，待测试
+
+# ----------------------------------------------------------
+# 爬取参数
+# ----------------------------------------------------------
+crawl_params:
+  lookback_days: 365
+  keywords: [数据安全, 个人信息, 网络安全, 数字化, 智慧城市]
+  sort_by: publish_date
+  sort_order: desc
+  priority: medium
+  enable_full_text_download: true
+  file_types: [pdf]
+  regions: [北京, 上海, 广东, 浙江, 江苏, 深圳, 天津, 重庆]
+
+# ----------------------------------------------------------
+# 飞书多维表格字段映射
+# ----------------------------------------------------------
+bitable:
+  table_name: 法规主表
+  field_mappings:
+    法规标题: title
+    层级: level
+    法规类型: law_type
+    发文机关: author
+    文号: doc_number
+    发布日期: publish_date
+    生效日期: effective_date
+    状态: status
+    原文链接: source_url
+    标签: tags
+    标准编号: standard_number
+    标准代号: standard_prefix
+    省份/城市: region
+    全文存储路径: local_path
