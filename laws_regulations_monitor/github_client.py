@@ -263,18 +263,9 @@ class GitHubClient:
         else:
             readme_content = readme_template
         
-        success, _ = self.upload_file(
-            local_path=None,
-            github_path=index_path,
-            commit_message=f"更新索引 - {level} ({datetime.now().strftime('%Y-%m-%d')})"
-        )
-        
-        # 由于 upload_file 需要本地文件，这里直接用 API
-        if not success:
-            # Fallback: 直接调用 API
-            self._update_readme(index_path, readme_content)
-        
-        return True
+        # 直接调用 API 更新 README（不依赖本地文件）
+        return self._update_readme(index_path, readme_content, 
+                                  f"更新索引 - {level} ({datetime.now().strftime('%Y-%m-%d')})")
 
     def _default_readme_template(self, level: str, records: List[Dict]) -> str:
         """生成默认 README 内容"""
@@ -311,13 +302,13 @@ class GitHubClient:
         
         return '\n'.join(lines)
 
-    def _update_readme(self, path: str, content: str) -> bool:
+    def _update_readme(self, path: str, content: str, commit_message: str = None) -> bool:
         """直接通过 API 更新 README"""
         exists, existing = self.file_exists(path)
         
         url = f"{self.API_BASE}/repos/{self.owner}/{self.repo}/contents/{path}"
         payload = {
-            'message': f"更新索引 {datetime.now().strftime('%Y-%m-%d')}",
+            'message': commit_message or f"更新索引 {datetime.now().strftime('%Y-%m-%d')}",
             'content': base64.b64encode(content.encode('utf-8')).decode('utf-8'),
             'branch': self.branch,
         }

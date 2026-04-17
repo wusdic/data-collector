@@ -35,3 +35,7 @@ tmp/
 temp/
 .cache/
 .github_config
+-e 
+# Monitor output (auto-generated)
+*.json
+!*.sample.json

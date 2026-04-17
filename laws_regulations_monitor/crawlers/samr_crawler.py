@@ -1,14 +1,14 @@
 """
 国家标准全文公开系统爬虫
-https://openstd.samr.gov.cn/
+http://openstd.samr.gov.cn/bzgk/std/
 来源: L4-国家标准
 """
 
-import json
-import logging
 import re
-from typing import List, Dict, Any, Optional
-from urllib.parse import urlencode
+import logging
+from typing import List, Dict, Any
+
+import requests
 
 from .base_crawler import BaseCrawler
 
@@ -18,181 +18,114 @@ logger = logging.getLogger(__name__)
 class SAMRCrawler(BaseCrawler):
     """国家标准全文公开系统爬虫"""
 
-    def __init__(self, config: Dict[str, Any], lookback_days: int = 30):
+    def __init__(self, config: Dict[str, Any], lookback_days: int = 730):
         super().__init__(config, lookback_days)
-        self.base_url = config.get('base_url', 'https://openstd.samr.gov.cn/')
-        self.search_url = config.get('search_url', 'https://openstd.samr.gov.cn/bzgk/gb/')
+        self.base_url = config.get('base_url', 'http://openstd.samr.gov.cn/bzgk/std/')
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (compatible; LawMonitor/1.0)',
+            'Accept': 'text/html,application/xhtml+xml',
+        })
 
     def crawl(self, **kwargs) -> List[Dict[str, Any]]:
-        """
-        爬取国家标准
-        
-        标准分为:
-        - GB: 国家标准 (强制/推荐)
-        - GB/T: 推荐性国家标准
-        """
+        """爬取国家标准"""
         results = []
-        
-        # 爬取最新发布的国家标准
-        latest = self._crawl_latest_standards()
-        for std in latest:
-            std['level'] = 'L4'
-            std['type'] = '国家标准'
-            std['author'] = '国家市场监督管理总局'
-        results.extend(latest)
-        
-        # 爬取最近更新的标准
-        updated = self._crawl_updated_standards()
-        for std in updated:
-            std['level'] = 'L4'
-            std['type'] = '国家标准'
-            std['author'] = '国家市场监督管理总局'
-        results.extend(updated)
-        
+        keywords = ['数据安全', '网络安全', '个人信息', '信息安全', '人工智能']
+
+        for kw in keywords:
+            try:
+                items = self._search_by_keyword(kw, max_pages=2)
+                for item in items:
+                    item['level'] = 'L4'
+                    item['type'] = '国家标准'
+                    item['author'] = '国家市场监督管理总局'
+                results.extend(items)
+                logger.info(f"  SAMR [{kw}]: {len(items)} 条")
+            except Exception as e:
+                logger.warning(f"  SAMR [{kw}] 失败: {e}")
+            self._rate_limit()
+
         return self._deduplicate(results)
 
-    def _crawl_latest_standards(self) -> List[Dict[str, Any]]:
-        """爬取最新发布的标准"""
+    def _search_by_keyword(self, keyword: str, max_pages: int = 2) -> List[Dict[str, Any]]:
         results = []
-        
-        # SAMR 标准检索页面
-        urls = [
-            f"{self.search_url}?type=standard&sort=1&page=1",  # 最新发布
-        ]
-        
-        for url in urls:
-            try:
-                content = self._make_request(url)
-                if content:
-                    items = self._parse_standard_list(content, url)
-                    results.extend(items)
-                self._rate_limit()
-            except Exception as e:
-                logger.warning(f"SAMR 标准列表爬取失败 [{url}]: {e}")
-        
+        for page in range(1, max_pages + 1):
+            items = self._fetch_page(keyword, page)
+            if not items:
+                break
+            results.extend(items)
         return results
 
-    def _crawl_updated_standards(self) -> List[Dict[str, Any]]:
-        """爬取最近更新的标准"""
-        return self._crawl_latest_standards()  # 复用
-
-    def _parse_standard_list(self, html: str, base_url: str) -> List[Dict[str, Any]]:
-        """解析标准列表页"""
-        results = []
-        
-        # SAMR 标准列表常见的 HTML 结构
-        # 提取标准号和标题
-        patterns = [
-            # <a href="/std/show?idd=xxx">GB/T 12345-2023</a> ...
-            r'<a[^>]+href="(/std/show\?[^"]+)"[^>]*>([^<]+GB/T?\s*[\d\-\:]+[^<]*)</a>',
-            # 标准列表项
-            r'(GB/T?\s*[\d\.\-]+)[^<]*<a[^>]+href="([^"]+)"[^>]*>([^<]+)</a>',
-        ]
-        
-        seen = set()
-        
-        for pattern in patterns:
-            matches = re.finditer(pattern, html, re.IGNORECASE)
-            for m in matches:
-                if len(m.groups()) >= 3:
-                    std_num = m.group(1).strip()
-                    url = m.group(2) if len(m.groups()) >= 2 else m.group(1)
-                    title = m.group(3).strip() if len(m.groups()) >= 3 else std_num
-                else:
-                    url = m.group(1)
-                    std_num = m.group(2).strip() if len(m.groups()) >= 2 else ''
-                    title = std_num
-                
-                if not title:
-                    continue
-                
-                key = f"{std_num}:{title}"
-                if key in seen:
-                    continue
-                seen.add(key)
-                
-                full_url = f"{self.base_url.rstrip('/')}{url}" if url.startswith('/') else url
-                
-                # 从标题或上下文提取日期
-                date = self._extract_date_from_context(html, title)
-                
-                results.append({
-                    'title': title,
-                    'url': full_url,
-                    'date': date or '',
-                    'doc_number': std_num,
-                    'author': '国家市场监督管理总局',
-                    'summary': '',
-                    'download_url': '',
-                    'status': '现行有效',
-                })
-        
-        return results
-
-    def _extract_date_from_context(self, html: str, keyword: str) -> Optional[str]:
-        """从 HTML 上下文中提取日期"""
-        idx = html.find(keyword)
-        if idx == -1:
-            return None
-        
-        # 查找关键词附近的日期
-        snippet = html[max(0, idx-200):idx+200]
-        return self._extract_date(snippet)
-
-    def get_standard_detail(self, std_id: str) -> Optional[Dict[str, Any]]:
-        """
-        获取标准详细信息
-        
-        Args:
-            std_id: 标准 ID 或 URL
-        """
-        if not std_id.startswith('http'):
-            std_id = f"{self.base_url}std/show?idd={std_id}"
-        
-        content = self._make_request(std_id)
-        if not content:
-            return None
-        
-        detail = {
-            'url': std_id,
-            'title': '',
-            'doc_number': '',
-            'author': '国家市场监督管理总局',
-            'publish_date': '',
-            'effective_date': '',
-            'status': '现行有效',
-            'download_url': '',
-            'summary': '',
+    def _fetch_page(self, keyword: str, page_num: int) -> List[Dict[str, Any]]:
+        params = {
+            'p.p1': '0',
+            'p.p90': 'circulation_date',
+            'p.p91': 'desc',
+            'p.p2': keyword,
+            'page': str(page_num),
+            'pageSize': '20',
         }
-        
-        # 提取标题
-        title_m = re.search(r'<h1[^>]*>([^<]+)</h1>', content)
-        if title_m:
-            detail['title'] = title_m.group(1).strip()
-        
-        # 提取标准号
-        std_num_m = re.search(r'(GB/T?\s*[\d\.\-]+)', content)
-        if std_num_m:
-            detail['doc_number'] = std_num_m.group(1)
-        
-        # 提取发布日期
-        date_m = re.search(r'发布日期[：:]\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})', content)
-        if date_m:
-            detail['publish_date'] = date_m.group(1)
-        
-        # 提取实施日期
-        eff_m = re.search(r'实施日期[：:]\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})', content)
-        if eff_m:
-            detail['effective_date'] = eff_m.group(1)
-        
-        # 提取 PDF 链接
-        pdf_m = re.search(r'href="([^"]+\.pdf[^"]*)"', content)
-        if pdf_m:
-            detail['download_url'] = pdf_m.group(1)
-        
-        # 提取摘要
-        summary_m = re.search(r'<meta[^>]+name="description"[^>]+content="([^"]+)"', content)
-        if summary_m:
-            detail['summary'] = summary_m.group(1)
-        
-        return detail
+        r = self.session.get(f'{self.base_url}std_list', params=params, timeout=10)
+        r.raise_for_status()
+        return self._parse_list_page(r.text)
+
+    def _parse_list_page(self, html: str) -> List[Dict[str, Any]]:
+        """
+        解析标准列表页
+        每行标准有3个showInfo，第2个包含标题+状态+日期信息：
+        showInfo(hcno);">标题</a> 推标/强标 即将实施 发布日期 实施日期
+        """
+        results = []
+        all_positions = [(m.start(), m.group(1)) for m in re.finditer(r"showInfo\('([A-F0-9]+)'\)", html)]
+
+        for i in range(0, len(all_positions) - 2, 3):
+            if i + 2 >= len(all_positions):
+                break
+
+            p_std, hcno_std = all_positions[i]
+            p_title, hcno_title = all_positions[i + 1]
+            p_status, hcno_status = all_positions[i + 2]
+
+            # 标准号：从标准号列的上下文
+            std_snippet = html[max(0, p_std - 200):p_std + 200]
+            gb_m = re.search(r'(GB\s*4\d+[\d\-]+)', std_snippet)
+            if not gb_m:
+                gb_m = re.search(r'(GB/T?\s*[\d\.\-]+)', std_snippet)
+            std_num = gb_m.group(1) if gb_m else ''
+
+            # 标题+日期：第2个showInfo后包含完整信息（扩展到1000字符以包含日期）
+            title_snippet = html[p_title:p_title + 1000]
+            # 标题
+            title_m = re.search(r'showInfo\([\"\'].+?[\"\']\);">([^<\r\n]+)', title_snippet)
+            title = title_m.group(1).strip() if title_m else ''
+            if not title:
+                continue
+
+            # 发布日期在标题之后的文本中
+            date_m = re.search(r'(\d{4}-\d{2}-\d{2})\s+\d{2}:\d{2}:\d{2}\.\d', title_snippet)
+            date = date_m.group(1) if date_m else ''
+
+            results.append({
+                'title': re.sub(r'\s+', ' ', title),
+                'url': f'{self.base_url}newGbInfo?hcno={hcno_title}',
+                'date': date,
+                'doc_number': std_num,
+                'author': '国家市场监督管理总局',
+                'level': 'L4',
+                'type': '国家标准',
+                'status': '现行有效',
+                'summary': '',
+                'download_url': '',
+            })
+
+        return results
+
+    def _deduplicate(self, results: List[Dict]) -> List[Dict[str, Any]]:
+        seen = set()
+        unique = []
+        for r in results:
+            key = r['title']
+            if key not in seen:
+                seen.add(key)
+                unique.append(r)
+        return unique

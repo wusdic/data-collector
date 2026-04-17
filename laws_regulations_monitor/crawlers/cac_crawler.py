@@ -1,15 +1,25 @@
 """
-网信办爬虫
-https://www.cac.gov.cn/
-来源: 
-  - L3: 部门规章/规范性文件 (column/regulations)
-  - 执法案例库 (column/case)
+网信办爬虫 - 修复版
+使用 /cms/JsonList API 直接获取数据
+
+Channel codes:
+  A09370301 - 法律
+  A09370302 - 行政法规
+  A09370303 - 部门规章
+  A09370304 - 司法解释
+  A09370305 - 规范性文件
+  A09370306 - 政策文件
+  A09370307 - 政策解读
 """
 
 import json
 import logging
 import re
 from typing import List, Dict, Any, Optional
+from datetime import datetime, timedelta
+
+import requests
+from bs4 import BeautifulSoup
 
 from .base_crawler import BaseCrawler
 
@@ -17,277 +27,211 @@ logger = logging.getLogger(__name__)
 
 
 class CACCrawler(BaseCrawler):
-    """网信办官网爬虫"""
+    """网信办官网爬虫 - 使用 JSON API"""
 
-    # 执法案例类型
-    CASE_TYPES = {
-        '行政处罚': '行政处罚',
-        '行政罚款': '行政处罚',
-        '责令改正': '行政处罚',
-        '司法判例': '司法判例',
-        '执法解读': '执法解读',
-        '监管问答': '监管问答',
+    # 按层级分类的 channel codes
+    CHANNEL_CODES = {
+        'L1': {'name': '法律', 'code': 'A09370301'},
+        'L2': {'name': '行政法规', 'code': 'A09370302'},
+        'L3': {'name': '部门规章', 'code': 'A09370303'},
+        'L4司法': {'name': '司法解释', 'code': 'A09370304'},
+        'L3规范': {'name': '规范性文件', 'code': 'A09370305'},
+        'L3政策': {'name': '政策文件', 'code': 'A09370306'},
+        '解读': {'name': '政策解读', 'code': 'A09370307'},
     }
 
-    def __init__(self, config: Dict[str, Any], lookback_days: int = 30):
+    def __init__(self, config: Dict[str, Any], lookback_days: int = 90):
         super().__init__(config, lookback_days)
-        self.base_url = config.get('base_url', 'https://www.cac.gov.cn/')
-        self.search_url = config.get('search_url', 'https://www.cac.gov.cn/search/')
+        self.base_url = config.get('base_url', 'https://www.cac.gov.cn')
+        self.api_url = f"{self.base_url}/cms/JsonList"
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (compatible; LawMonitor/1.0)',
+            'Referer': self.base_url,
+        })
 
     def crawl(self, **kwargs) -> List[Dict[str, Any]]:
         """
-        爬取网信办数据
-        - 部门规章/规范性文件 (L3)
-        - 执法案例
+        爬取网信办所有分类数据
         """
         results = []
-        
-        # L3: 部门文件
-        regulations = self._crawl_regulations()
-        for reg in regulations:
-            reg['level'] = 'L3'
-            reg['type'] = '部门规章'
-            reg['author'] = '国家互联网信息办公室'
-        results.extend(regulations)
-        
-        # 执法案例库
-        cases = self._crawl_cases()
-        for case in cases:
-            case['level'] = 'case'
-        results.extend(cases)
-        
+
+        # 对每个 channel 爬取所有页面
+        for level_key, channel_info in self.CHANNEL_CODES.items():
+            code = channel_info['code']
+            name = channel_info['name']
+            logger.info(f"正在抓取 CAC [{name}] (channel: {code})")
+
+            items = self._crawl_channel(code, level_key)
+            logger.info(f"  → 获取 {len(items)} 条记录")
+            results.extend(items)
+
         return self._deduplicate(results)
 
-    def _crawl_regulations(self) -> List[Dict[str, Any]]:
-        """爬取部门规章和规范性文件"""
+    def _crawl_channel(self, channel_code: str, level_key: str, 
+                       max_pages: int = 50) -> List[Dict[str, Any]]:
+        """
+        爬取单个 channel 的所有页面
+        """
         results = []
-        
-        # 网信办法规栏目
-        regulation_urls = [
-            f"{self.base_url}column/regulations.html",     # 法规制度
-            f"{self.base_url}column/4858/",                 # 部门规章
-            f"{self.base_url}column/4859/",                 # 规范性文件
-        ]
-        
-        for url in regulation_urls:
+        page = 1
+        total_pages = max_pages  # 先设一个上限
+
+        while page <= total_pages:
             try:
-                content = self._make_request(url)
-                if content:
-                    items = self._parse_article_list(content, url, 'regulation')
-                    results.extend(items)
+                items, total = self._fetch_page(channel_code, page)
+                if not items:
+                    break
+
+                # 从第一条记录推断总页数
+                if total and total > 0:
+                    # total 可能是总记录数，计算页数
+                    per_page = 20
+                    total_pages = min((total + per_page - 1) // per_page, max_pages)
+
+                for item in items:
+                    processed = self._process_item(item, level_key)
+                    if processed:
+                        results.append(processed)
+
+                if page >= total_pages:
+                    break
+
+                page += 1
                 self._rate_limit()
+
             except Exception as e:
-                logger.warning(f"CAC 法规爬取失败 [{url}]: {e}")
-        
+                logger.warning(f"  CAC channel {channel_code} page {page} 失败: {e}")
+                break
+
         return results
 
-    def _crawl_cases(self) -> List[Dict[str, Any]]:
-        """爬取执法案例"""
-        results = []
-        
-        # 网信办执法案例栏目
-        case_urls = [
-            f"{self.base_url}column/case.html",            # 执法案例
-            f"{self.base_url}column/6590/",                 # 监管执法
-        ]
-        
-        for url in case_urls:
-            try:
-                content = self._make_request(url)
-                if content:
-                    items = self._parse_article_list(content, url, 'case')
-                    results.extend(items)
-                self._rate_limit()
-            except Exception as e:
-                logger.warning(f"CAC 案例爬取失败 [{url}]: {e}")
-        
-        return results
-
-    def _parse_article_list(self, html: str, base_url: str, 
-                            item_type: str = 'regulation') -> List[Dict[str, Any]]:
+    def _fetch_page(self, channel_code: str, page_num: int) -> tuple:
         """
-        解析网信办文章列表
-        
-        Args:
-            html: HTML 内容
-            base_url: 基础 URL
-            item_type: regulation 或 case
+        获取单页数据
+        Returns: (items, total_count)
         """
-        results = []
-        
-        # 网信办列表常见结构
-        # <a href="/a/2024/0105/12345.html" class="title">标题</a>
-        # 或 <li><a href="...">标题</a><span>2024-01-05</span></li>
-        
-        patterns = [
-            # 标准列表项: <a href="/a/...">标题</a> + 日期
-            r'<a[^>]+href="(/a/\d{4}/\d{4}/\d+\.html)"[^>]*>([^<]+)</a>',
-            # 带日期的列表项
-            r'<li[^>]*>.*?<a[^>]+href="(/a/\d{4}/\d{4}/\d+\.html)"[^>]*>([^<]+)</a>.*?(\d{4}-\d{2}-\d{2})',
-            # jinja 模板结构
-            r'<a[^>]+href="([^"]+)"[^>]+class="[^"]*title[^"]*"[^>]*>([^<]+)</a>',
-        ]
-        
-        seen = set()
-        
-        for pattern in patterns:
-            matches = re.finditer(pattern, html, re.DOTALL)
-            for m in matches:
-                if len(m.groups()) >= 2:
-                    url = m.group(1)
-                    title = re.sub(r'<[^>]+>', '', m.group(2)).strip()
-                    date = m.group(3) if len(m.groups()) >= 3 else None
-                else:
-                    continue
-                
-                if not title:
-                    continue
-                
-                title = self._clean_text(title)
-                key = f"{url}:{title}"
-                if key in seen:
-                    continue
-                
-                # 过滤非相关内容
-                exclude_keywords = ['关于', '招聘', '新闻', '通知', '公告']
-                if item_type == 'regulation':
-                    # 法规文件特征词
-                    law_keywords = ['办法', '规定', '条例', '细则', '规范', 
-                                   '制度', '决定', '意见', '通知（规范性）']
-                    if not self._filter_by_keywords(title, law_keywords):
-                        continue
-                
-                seen.add(key)
-                full_url = f"{self.base_url.rstrip('/')}{url}" if url.startswith('/') else url
-                
-                # 检查日期是否在范围内
-                if date and not self._is_recent(date):
-                    continue
-                
-                if item_type == 'case':
-                    case_type = self._infer_case_type(title)
-                    results.append({
-                        'title': title,
-                        'url': full_url,
-                        'date': date or '',
-                        'case_type': case_type,
-                        'summary': '',
-                        'result': '',
-                        'related_laws': '',
-                        'authority': '国家互联网信息办公室',
-                    })
-                else:
-                    results.append({
-                        'title': title,
-                        'url': full_url,
-                        'date': date or '',
-                        'author': '国家互联网信息办公室',
-                        'doc_number': self._extract_doc_number(title),
-                        'summary': '',
-                        'download_url': '',
-                        'status': '现行有效',
-                    })
-        
-        return results
-
-    def _clean_text(self, text: str) -> str:
-        """清理 HTML 文本"""
-        text = re.sub(r'<[^>]+>', '', text)
-        text = re.sub(r'\s+', ' ', text)
-        return text.strip()
-
-    def _infer_case_type(self, title: str) -> str:
-        """从标题推断案例类型"""
-        if '处罚' in title or '罚款' in title or '通报' in title:
-            return '行政处罚'
-        elif '判例' in title or '判决' in title or '裁定' in title:
-            return '司法判例'
-        elif '解读' in title or '解析' in title:
-            return '执法解读'
-        elif '问答' in title or '问答' in title:
-            return '监管问答'
-        return '行政处罚'  # 默认
-
-    def get_case_detail(self, case_url: str) -> Optional[Dict[str, Any]]:
-        """
-        获取案例详细信息
-        
-        Args:
-            case_url: 案例页面 URL
-        """
-        if not case_url.startswith('http'):
-            case_url = f"{self.base_url.rstrip('/')}/{case_url.lstrip('/')}"
-        
-        content = self._make_request(case_url)
-        if not content:
-            return None
-        
-        detail = {
-            'url': case_url,
-            'title': '',
-            'case_type': '行政处罚',
-            'authority': '国家互联网信息办公室',
-            'case_date': '',
-            'summary': '',
-            'key_points': '',
-            'result': '',
-            'related_laws': '',
+        params = {
+            'channelCode': channel_code,
+            'perPage': '20',
+            'pageno': str(page_num),
+            'condition': '0',
+            'fuhao': '=',
+            'value': '',
         }
-        
-        # 提取标题
-        title_m = re.search(r'<h1[^>]*>([^<]+)</h1>', content)
-        if title_m:
-            detail['title'] = self._clean_text(title_m.group(1))
-        
-        # 提取日期
-        date_m = re.search(r'(\d{4}[-/年]\d{1,2}[-/月]\d{1,2}[日]?)', content)
-        if date_m:
-            detail['case_date'] = date_m.group(1)
-        
-        # 提取正文内容（用于摘要和要点）
-        content_m = re.search(r'<div[^>]+class="[^"]*content[^"]*"[^>]*>(.*?)</div>', 
-                              content, re.DOTALL)
-        if content_m:
-            text = self._clean_text(content_m.group(1))
-            detail['summary'] = text[:500] if text else ''
-            
-            # 提取认定要点
-            if '认定' in text:
-                key_m = re.search(r'认定[：:]([^。]+)', text)
-                if key_m:
-                    detail['key_points'] = key_m.group(1)
-            
-            # 提取处罚结果
-            if '处罚' in text or '罚款' in text:
-                result_m = re.search(r'((?:罚款|处罚|责令|警告)[^。]+)', text)
-                if result_m:
-                    detail['result'] = result_m.group(1)
-            
-            # 提取涉及法规
-            laws = re.findall(r'《([^》]+)》', text)
-            if laws:
-                detail['related_laws'] = '、'.join(laws[:5])
-        
-        return detail
 
-    def search_by_keyword(self, keyword: str, max_results: int = 20) -> List[Dict[str, Any]]:
+        resp = self.session.get(self.api_url, params=params, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+
+        items = data.get('list', [])
+        total = data.get('total', 0)
+
+        return items, total
+
+    def _process_item(self, item: Dict, level_key: str) -> Optional[Dict[str, Any]]:
         """
-        关键词搜索
-        
-        Args:
-            keyword: 搜索关键词
-            max_results: 最大结果数
+        处理单条记录
         """
-        results = []
-        
-        # 构造搜索 URL
-        search_url = f"{self.search_url}?q={keyword}"
-        
-        try:
-            content = self._make_request(search_url)
-            if content:
-                results = self._parse_article_list(content, search_url, 'regulation')
-        except Exception as e:
-            logger.warning(f"CAC 搜索失败 [{keyword}]: {e}")
-        
-        return results[:max_results]
+        title = item.get('topic', '').strip()
+        pubtime = item.get('pubtime', '')
+        infourl = item.get('infourl', '')
+
+        if not title or not infourl:
+            return None
+
+        # 过滤政策解读（不是法规本身）
+        if level_key == '解读':
+            return None
+
+        # 提取日期
+        if isinstance(pubtime, str) and pubtime:
+            date_str = pubtime.split(' ')[0]
+            try:
+                pub_date = datetime.strptime(date_str, '%Y-%m-%d')
+                if (datetime.now() - pub_date).days > self.lookback_days * 2:
+                    return None  # 太旧的跳过
+            except:
+                date_str = ''
+        else:
+            date_str = ''
+
+        # 规范化 URL
+        if infourl.startswith('//'):
+            url = f'https:{infourl}'
+        elif infourl.startswith('/'):
+            url = f'{self.base_url}{infourl}'
+        else:
+            url = infourl
+
+        # 判断法规类型
+        reg_type = self._infer_regulation_type(title, level_key)
+
+        # 判断状态
+        status = self._infer_status(title)
+
+        return {
+            'title': title,
+            'url': url,
+            'date': date_str,
+            'level': level_key,
+            'reg_type': reg_type,
+            'author': '国家互联网信息办公室',
+            'status': status,
+            'doc_number': self._extract_doc_number(title),
+        }
+
+    def _infer_regulation_type(self, title: str, level_key: str) -> str:
+        """根据标题推断法规类型"""
+        if level_key in ('L1', 'L2'):
+            return '国家法律' if level_key == 'L1' else '行政法规'
+
+        type_keywords = {
+            '办法': '部门规章',
+            '规定': '部门规章',
+            '条例': '行政法规',
+            '细则': '部门规章',
+            '规范': '规范性文件',
+            '制度': '规范性文件',
+            '决定': '部门规章',
+            '意见': '规范性文件',
+            '通知': '规范性文件',
+        }
+
+        for kw, t in type_keywords.items():
+            if kw in title:
+                return t
+        return '部门规章'
+
+    def _infer_status(self, title: str) -> str:
+        """判断法规状态"""
+        if '征求意见' in title or '（征求意见稿）' in title or '(征求意见稿)' in title:
+            return '征求意见稿'
+        if '（草案）' in title or '(草案)' in title:
+            return '草案'
+        return '现行有效'
+
+    def _extract_doc_number(self, title: str) -> str:
+        """从标题提取文号"""
+        patterns = [
+            r'（\d{4}年第\d+号）',
+            r'\(\d{4}年第\d+号\)',
+            r'〔\d{4}〕\d+号',
+            r'【\d+号】',
+        ]
+        for p in patterns:
+            m = re.search(p, title)
+            if m:
+                return m.group(0)
+        return ''
+
+    def _deduplicate(self, results: List[Dict]) -> List[Dict[str, Any]]:
+        """根据标题去重"""
+        seen = set()
+        unique = []
+        for r in results:
+            key = r['title']
+            if key not in seen:
+                seen.add(key)
+                unique.append(r)
+        return unique

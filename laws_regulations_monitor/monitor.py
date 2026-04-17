@@ -28,6 +28,7 @@ class LawsMonitor:
         # 初始化客户端
         self.bitable = self._init_bitable()
         self.github = self._init_github()
+        self.github_store = self._init_github_store()
         self.comparator = self._init_comparator()
         
         # 爬虫实例
@@ -87,11 +88,25 @@ class LawsMonitor:
             logger.error(f"GitHub 客户端初始化失败: {e}")
             return None
 
+    def _init_github_store(self):
+        """初始化 GitHub JSON 数据存储"""
+        try:
+            from .github_data_store import GitHubDataStore
+            if self.github:
+                store = GitHubDataStore(self.github, {
+                    'data_dir': self.config.get('MONITOR', {}).get('github_data_dir', 'data')
+                })
+                logger.info("GitHub JSON 数据存储初始化成功")
+                return store
+        except Exception as e:
+            logger.error(f"GitHub JSON 存储初始化失败: {e}")
+        return None
+
     def _init_comparator(self):
         """初始化比对引擎"""
-        if self.bitable:
+        if self.bitable or self.github_store:
             from .comparator import Comparator
-            return Comparator(self.bitable, self.github)
+            return Comparator(self.bitable, self.github, self.github_store)
         return None
 
     def _init_crawlers(self) -> None:
@@ -175,13 +190,15 @@ class LawsMonitor:
             return None
 
     def run_full_scan(self, levels: List[str] = None, 
-                       download: bool = True) -> Dict[str, Any]:
+                       download: bool = True,
+                       use_github_json: bool = True) -> Dict[str, Any]:
         """
         执行完整扫描
         
         Args:
             levels: 指定层级，如 ['L1', 'L3', 'case']，None 表示全部
             download: 是否下载文件
+            use_github_json: 是否使用 GitHub JSON 数据源进行比对
             
         Returns:
             扫描结果报告
@@ -198,7 +215,8 @@ class LawsMonitor:
         
         # 2. 加载现有记录
         if self.comparator:
-            self.comparator.load_existing()
+            # 如果使用 GitHub JSON 数据源，从 JSON 文件加载
+            self.comparator.load_existing(use_github=use_github_json and bool(self.github_store))
         
         all_results = {}
         all_items = {}  # level -> items
@@ -249,14 +267,17 @@ class LawsMonitor:
                 
                 logger.info(f"[{level}] 新增: {len(new_records)}, 更新: {len(updated)}, 跳过: {len(skipped)}")
                 
-                # 5. 保存到飞书 + GitHub
+                # 5. 保存到飞书 + GitHub + GitHub JSON
                 if new_records:
                     logger.info(f"[{level}] 保存新记录...")
                     result = self.comparator.merge_and_save(new_records, level, download)
                     all_results[level] = result
                 else:
-                    all_results[level] = {'bitable': {'created': [], 'updated': [], 'errors': []},
-                                         'github': {'uploaded': [], 'skipped': [], 'failed': []}}
+                    all_results[level] = {
+                        'bitable': {'created': [], 'updated': [], 'errors': []},
+                        'github': {'uploaded': [], 'skipped': [], 'failed': []},
+                        'github_json': {'appended': 0, 'skipped': 0, 'errors': []}
+                    }
         else:
             logger.warning("比对引擎未初始化，跳过比对步骤")
         
@@ -304,19 +325,24 @@ class LawsMonitor:
         for level, result in results.items():
             bitable_res = result.get('bitable', {})
             github_res = result.get('github', {})
+            json_res = result.get('github_json', {})
             
             created = len(bitable_res.get('created', []))
             errors = len(bitable_res.get('errors', []))
             github_ok = len(github_res.get('uploaded', []))
+            json_appended = json_res.get('appended', 0)
             
             total_new += created
             total_errors += errors
             
-            if created > 0:
+            if created > 0 or json_appended > 0:
                 has_new = True
                 lines.append(f"**{level_names.get(level, level)}**")
                 lines.append(f"  • 新增: {created} 条")
-                lines.append(f"  • 文件上传: {github_ok} 个")
+                if github_ok > 0:
+                    lines.append(f"  • 文件上传: {github_ok} 个")
+                if json_appended > 0:
+                    lines.append(f"  • JSON追加: {json_appended} 条")
                 if errors > 0:
                     lines.append(f"  • 失败: {errors} 条")
                 lines.append("")
@@ -364,13 +390,15 @@ def main():
                        help='指定监控层级')
     parser.add_argument('--nodownload', action='store_true', help='不下载文件')
     parser.add_argument('--report', '-r', action='store_true', help='输出报告')
+    parser.add_argument('--no-github-json', action='store_true', help='不使用 GitHub JSON 数据源')
     
     args = parser.parse_args()
     
     monitor = LawsMonitor(args.config)
     results = monitor.run_full_scan(
         levels=args.levels, 
-        download=not args.nodownload
+        download=not args.nodownload,
+        use_github_json=not args.no_github_json
     )
     
     if args.report:

@@ -2,7 +2,7 @@
 """
 法律合规监控 - 数据源配置管理器
 功能:
-1. 加载和验证 data_sources.yaml 配置
+1. 从 config.yaml 加载数据源配置（统一配置）
 2. 检查每个数据源与层级/库的匹配关系
 3. 生成搜索查询
 4. 支持动态更新数据源
@@ -24,9 +24,8 @@ from typing import Dict, List, Any, Optional
 # ===== 配置路径 =====
 CONFIG_FILE = os.path.join(
     os.path.dirname(__file__), 
-    'data_sources.yaml'
+    'config.yaml'
 )
-BASE_DIR = os.path.expanduser('~/workspace/agent/workspace/data-collector/')
 
 
 class SourceManager:
@@ -35,6 +34,8 @@ class SourceManager:
     def __init__(self, config_path: str = None):
         self.config_path = config_path or CONFIG_FILE
         self.config = self._load_config()
+        # 从 config.yaml 的 LEVELS 配置中提取数据源
+        self._sources = self.config.get('LEVELS', {})
 
     def _load_config(self) -> Dict:
         if not os.path.exists(self.config_path):
@@ -55,9 +56,7 @@ class SourceManager:
             'by_level': {}
         }
 
-        sources = self.config.get('sources', {})
-
-        for level, level_config in sources.items():
+        for level, level_config in self._sources.items():
             level_result = {
                 'name': level_config.get('level_name', level),
                 'priority': level_config.get('priority', 'unknown'),
@@ -87,7 +86,7 @@ class SourceManager:
 
                 level_result['sources'].append({
                     'name': src.get('name', 'Unknown'),
-                    'type': src.get('type', 'unknown'),
+                    'type': src.get('type', 'website'),
                     'enabled': src.get('enabled', True),
                     'issues': src_issues
                 })
@@ -98,20 +97,28 @@ class SourceManager:
 
     def list_sources(self, level: str = None) -> List[Dict]:
         """列出数据源"""
-        sources = self.config.get('sources', {})
         results = []
 
         if level:
-            if level in sources:
-                level_config = sources[level]
+            # 支持多种格式: L1, L1_国家法律, L1-国家法律
+            level_key = level
+            if level not in self._sources:
+                # 尝试匹配
+                for key in self._sources.keys():
+                    if key.replace('_', '').replace('-', '') == level.replace('_', '').replace('-', ''):
+                        level_key = key
+                        break
+            
+            if level_key in self._sources:
+                level_config = self._sources[level_key]
                 for src in level_config.get('sources', []):
                     results.append({
-                        'level': level,
-                        'level_name': level_config.get('level_name', level),
+                        'level': level_key,
+                        'level_name': level_config.get('level_name', level_key),
                         **src
                     })
         else:
-            for lvl, level_config in sources.items():
+            for lvl, level_config in self._sources.items():
                 for src in level_config.get('sources', []):
                     results.append({
                         'level': lvl,
@@ -149,10 +156,9 @@ class SourceManager:
 
     def update_source(self, level: str, source_name: str, updates: Dict) -> bool:
         """更新数据源配置"""
-        sources = self.config.get('sources', {})
-        if level not in sources:
+        if level not in self._sources:
             return False
-        level_sources = sources[level].get('sources', [])
+        level_sources = self._sources[level].get('sources', [])
         for src in level_sources:
             if src.get('name') == source_name:
                 src.update(updates)
@@ -162,24 +168,22 @@ class SourceManager:
 
     def add_source(self, level: str, source: Dict) -> bool:
         """添加数据源"""
-        sources = self.config.get('sources', {})
-        if level not in sources:
-            sources[level] = {
+        if level not in self._sources:
+            self._sources[level] = {
                 'level_name': level,
                 'law_type': level,
                 'priority': 'medium',
                 'sources': []
             }
-        sources[level].setdefault('sources', []).append(source)
+        self._sources[level].setdefault('sources', []).append(source)
         self._save_config()
         return True
 
     def remove_source(self, level: str, source_name: str) -> bool:
         """删除数据源"""
-        sources = self.config.get('sources', {})
-        if level not in sources:
+        if level not in self._sources:
             return False
-        level_sources = sources[level].get('sources', [])
+        level_sources = self._sources[level].get('sources', [])
         for i, src in enumerate(level_sources):
             if src.get('name') == source_name:
                 del level_sources[i]
@@ -193,16 +197,15 @@ class SourceManager:
 
     def get_stats(self) -> Dict:
         """获取统计信息"""
-        sources = self.config.get('sources', {})
         stats = {
-            'total_levels': len(sources),
+            'total_levels': len(self._sources),
             'total_sources': 0,
             'enabled_sources': 0,
             'by_level': {},
             'by_type': {}
         }
 
-        for level, level_config in sources.items():
+        for level, level_config in self._sources.items():
             level_sources = level_config.get('sources', [])
             enabled = sum(1 for s in level_sources if s.get('enabled', True))
             stats['total_sources'] += len(level_sources)

@@ -1,0 +1,403 @@
+# ═══════════════════════════════════════════════════════════════════
+# 法规监控系统 - 数据源配置
+# 7层 + 2库 全覆盖来源定义
+#
+# 字段说明：
+#   source_id:       唯一标识
+#   name:            中文名称
+#   levels:          对应的法规层级 (L1-L7)
+#   categories:      法规分类 (法律/行政法规/部门规章/国家标准/行业标准/地方标准/规范性文件/司法解释)
+#   base_url:        主 URL
+#   type:            数据类型 (api_json/ html_server/ html_spa)
+#   method:          爬取方式
+#     api_json:      直接调 JSON API (如 CAC)
+#     html_server:   传统服务端渲染 HTML (如 SAMR)
+#     html_spa:      JS 客户端渲染 SPA (当前环境无法爬取)
+#     browser:       需要浏览器渲染 (当前环境不可用)
+#   fetcher:         爬取函数名
+#   parser:          解析函数名
+#   rate_limit:      请求间隔(秒)
+#   concurrent:      并发数
+#   headers:         特殊请求头
+#   encoding:        响应编码 (auto/gbk/gb2312/utf-8)
+#   auth:            认证方式
+#   note:            备注
+# ═══════════════════════════════════════════════════════════════════
+
+sources:
+
+  # ─────────────────────────────────────────────────────────────
+  # L1 国家法律
+  # ─────────────────────────────────────────────────────────────
+  - source_id: cac_l1
+    name: 网信办-国家法律
+    levels: [L1]
+    categories: [法律]
+    base_url: https://www.cac.gov.cn
+    search_url: https://www.cac.gov.cn/cms/JsonList
+    type: api_json
+    method: cac_api
+    parser: parse_cac_json
+    rate_limit: 1
+    concurrent: 1
+    channel_codes:
+      - code: A09370301
+        name: 国家法律
+        level: L1
+        sort: 1
+    note: CAC 收录全部数据安全相关国家法律(9部)，最完整来源
+
+  - source_id: npc_flk
+    name: 全国人大法规数据库
+    levels: [L1]
+    categories: [法律]
+    base_url: https://flk.npc.gov.cn
+    type: html_spa
+    method: spa_browser
+    note: 纯SPA，无法爬取。数据已被CAC-L1完全覆盖
+
+  # ─────────────────────────────────────────────────────────────
+  # L2 行政法规
+  # ─────────────────────────────────────────────────────────────
+  - source_id: cac_l2
+    name: 网信办-行政法规
+    levels: [L2]
+    categories: [行政法规]
+    base_url: https://www.cac.gov.cn
+    search_url: https://www.cac.gov.cn/cms/JsonList
+    type: api_json
+    method: cac_api
+    parser: parse_cac_json
+    rate_limit: 1
+    concurrent: 1
+    channel_codes:
+      - code: A09370302
+        name: 行政法规
+        level: L2
+        sort: 1
+    note: CAC 收录网信办相关行政法规(15+条)
+
+  - source_id: gov_council
+    name: 国务院政策文件
+    levels: [L2]
+    categories: [行政法规]
+    base_url: https://www.gov.cn
+    search_url: https://www.gov.cn/zhengce/
+    type: html_server
+    method: http_get
+    parser: parse_gov_html
+    rate_limit: 2
+    encoding: gbk
+    headers:
+      User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+    note: 政府官网，可访问但内容需编码处理，需验证完整法规列表URL
+
+  # ─────────────────────────────────────────────────────────────
+  # L3 部门规章 (各部委)
+  # ─────────────────────────────────────────────────────────────
+  - source_id: cac_l3
+    name: 网信办-部门规章
+    levels: [L3]
+    categories: [部门规章]
+    base_url: https://www.cac.gov.cn
+    search_url: https://www.cac.gov.cn/cms/JsonList
+    type: api_json
+    method: cac_api
+    parser: parse_cac_json
+    rate_limit: 1
+    concurrent: 1
+    channel_codes:
+      - code: A09370303
+        name: 部门规章
+        level: L3
+        sort: 1
+      - code: A09370304
+        name: 司法解释
+        level: L4
+        sort: 1
+      - code: A09370305
+        name: 规范性文件
+        level: L3
+        sort: 1
+      - code: A09370306
+        name: 政策文件
+        level: L3
+        sort: 1
+    note: CAC 收录网信办及相关部门最新规章(33+条)，按时间排序
+
+  - source_id: miit_reg
+    name: 工信部政策法规
+    levels: [L3]
+    categories: [部门规章, 行业标准]
+    base_url: https://www.miit.gov.cn
+    search_url: https://www.miit.gov.cn/column/67
+    type: html_server
+    method: http_get
+    parser: parse_miit_html
+    rate_limit: 3
+    encoding: utf-8
+    note: 工信部法规页面需测试具体URL，部分页面返回404
+
+  - source_id: pbc_reg
+    name: 央行金融法规
+    levels: [L3]
+    categories: [部门规章]
+    base_url: http://www.pbc.gov.cn
+    search_url: http://www.pbc.gov.cn/publish/renminying/331/index.html
+    type: html_server
+    method: http_get
+    parser: parse_pbc_html
+    rate_limit: 3
+    encoding: gbk
+    note: 央行金融数据安全相关法规
+
+  - source_id: mps_reg
+    name: 公安部网络安全法规
+    levels: [L3]
+    categories: [部门规章]
+    base_url: https://www.mps.gov.cn
+    type: html_server
+    method: http_get
+    parser: parse_mps_html
+    rate_limit: 3
+    note: 公安部网络安全/个人信息保护相关，需测试可用URL
+
+  - source_id: nhc_reg
+    name: 卫健委法规
+    levels: [L3]
+    categories: [部门规章]
+    base_url: https://www.nhc.gov.cn
+    search_url: https://www.nhc.gov.cn/fzs/
+    type: html_server
+    method: http_get
+    parser: parse_nhc_html
+    rate_limit: 3
+    encoding: utf-8
+    note: 健康医疗数据安全相关法规
+
+  - source_id: mot_reg
+    name: 交通部法规
+    levels: [L3]
+    categories: [部门规章]
+    base_url: https://www.mot.gov.cn
+    type: html_server
+    method: http_get
+    parser: parse_mot_html
+    rate_limit: 3
+    note: 汽车/交通数据安全相关，需测试
+
+  - source_id: moe_reg
+    name: 教育部法规
+    levels: [L3]
+    categories: [部门规章]
+    base_url: http://www.moe.gov.cn
+    type: html_server
+    method: http_get
+    parser: parse_moe_html
+    rate_limit: 3
+    note: 教育数据安全相关，需测试
+
+  - source_id: samr_reg
+    name: 市场监管总局部门规章
+    levels: [L3]
+    categories: [部门规章]
+    base_url: http://openstd.samr.gov.cn
+    search_url: http://openstd.samr.gov.cn/bzgk/gb/
+    type: html_server
+    method: http_get
+    parser: parse_samr_gb_html
+    rate_limit: 2
+    note: 市场监管总局部门规章/公告，需测试
+
+  # ─────────────────────────────────────────────────────────────
+  # L4 国家标准
+  # ─────────────────────────────────────────────────────────────
+  - source_id: samr_standards
+    name: 国家标准全文公开系统
+    levels: [L4]
+    categories: [国家标准]
+    base_url: http://openstd.samr.gov.cn/bzgk/std/
+    search_url: http://openstd.samr.gov.cn/bzgk/std/std_list
+    type: html_server
+    method: samr_search
+    parser: parse_samr_html
+    rate_limit: 1
+    concurrent: 5
+    search_params_template: "p.p1=0&p.p90=circulation_date&p.p91=desc&p.p2={keyword}&page={page}"
+    keywords: [数据安全, 网络安全, 个人信息, 信息安全, 人工智能, 密码, 等级保护]
+    note: ✅ 已验证可用，SAMR国家标准页面(需按关键词搜索)
+
+  # ─────────────────────────────────────────────────────────────
+  # L5 行业标准
+  # ─────────────────────────────────────────────────────────────
+  - source_id: miit_industry_std
+    name: 工信部行业标准
+    levels: [L5]
+    categories: [行业标准]
+    base_url: https://www.miit.gov.cn
+    search_url: https://www.miit.gov.cn/column/69
+    type: html_server
+    method: http_get
+    parser: parse_miit_std_html
+    rate_limit: 3
+    encoding: utf-8
+    note: 工信部行业标准目录，需验证
+
+  - source_id: tc260
+    name: 信安标委国家标准
+    levels: [L4, L5]
+    categories: [国家标准, 行业标准]
+    base_url: https://www.tc260.org.cn
+    type: html_server
+    method: http_get
+    parser: parse_tc260_html
+    rate_limit: 3
+    note: 全国信息安全标准化技术委员会，在研/发布标准
+
+  # ─────────────────────────────────────────────────────────────
+  # L6 地方标准
+  # ─────────────────────────────────────────────────────────────
+  - source_id: local_std_beijing
+    name: 北京市地方标准
+    levels: [L6]
+    categories: [地方标准]
+    base_url: https://httpbin.org/status/200  # 占位，需验证真实URL
+    type: html_server
+    method: http_get
+    parser: parse_local_std_html
+    note: 占位，需找到各省监局标准数据库入口
+
+  - source_id: local_std_shanghai
+    name: 上海市地方标准
+    levels: [L6]
+    categories: [地方标准]
+    base_url: https://httpbin.org/status/200  # 占位
+    type: html_server
+    note: 占位
+
+  # ─────────────────────────────────────────────────────────────
+  # L7 司法解释
+  # ─────────────────────────────────────────────────────────────
+  - source_id: cac_law_interp
+    name: 网信办-司法解释
+    levels: [L7]
+    categories: [司法解释]
+    base_url: https://www.cac.gov.cn
+    search_url: https://www.cac.gov.cn/cms/JsonList
+    type: api_json
+    method: cac_api
+    parser: parse_cac_json
+    rate_limit: 1
+    channel_codes:
+      - code: A09370304
+        name: 司法解释
+        level: L7
+        sort: 1
+    note: CAC 收录司法解释(6条)
+
+  - source_id: spc_interp
+    name: 最高法司法解释
+    levels: [L7]
+    categories: [司法解释]
+    base_url: https://www.court.gov.cn
+    search_url: https://www.court.gov.cn/fabu/flfg/
+    type: html_server
+    method: http_get
+    parser: parse_spc_html
+    rate_limit: 3
+    encoding: gbk
+    note: 最高法司法解释，需验证页面可用性和解析
+
+  - source_id: spp_interp
+    name: 最高检司法解释
+    levels: [L7]
+    categories: [司法解释]
+    base_url: http://www.spp.gov.cn
+    search_url: http://www.spp.gov.cn/flfg/
+    type: html_server
+    method: http_get
+    parser: parse_spp_html
+    rate_limit: 3
+    encoding: gbk
+    note: 最高检司法解释，需验证页面可用性和解析
+
+  # ─────────────────────────────────────────────────────────────
+  # 执法案例库
+  # ─────────────────────────────────────────────────────────────
+  - source_id: spp_cases
+    name: 最高检典型案例
+    levels: [L7_extra]
+    categories: [执法案例]
+    base_url: http://www.spp.gov.cn
+    search_url: http://www.spp.gov.cn/jcxy/
+    type: html_server
+    method: http_get
+    parser: parse_spp_cases_html
+    rate_limit: 3
+    encoding: gbk
+    note: 最高检公布的数据安全/个人信息保护典型案例
+
+  - source_id: spc_cases
+    name: 最高法典型案例
+    levels: [L7_extra]
+    categories: [执法案例]
+    base_url: https://www.court.gov.cn
+    search_url: https://www.court.gov.cn/fabu/jiedu/
+    type: html_server
+    method: http_get
+    parser: parse_spc_cases_html
+    rate_limit: 3
+    encoding: gbk
+    note: 最高法公布的数据安全相关案例
+
+  # ─────────────────────────────────────────────────────────────
+  # 参考资料库
+  # ─────────────────────────────────────────────────────────────
+  - source_id: ncac_docs
+    name: 国家保密局政策法规
+    levels: [L3]
+    categories: [参考资料]
+    base_url: http://www.ncac.gov.cn
+    search_url: http://www.ncac.gov.cn/column/21
+    type: html_server
+    method: http_get
+    parser: parse_ncac_html
+    rate_limit: 3
+    encoding: gbk
+    note: 国家保密局政策法规文件
+
+  - source_id: cnist
+    name: 中国信息安全测评中心
+    levels: [L5]
+    categories: [参考资料, 行业标准]
+    base_url: https://www.cnist.cn
+    type: html_server
+    method: http_get
+    parser: parse_cnist_html
+    rate_limit: 3
+    note: 信息安全测评/认证相关参考资料
+
+# ─────────────────────────────────────────────────────────────
+# 全局配置
+# ─────────────────────────────────────────────────────────────
+global:
+  rate_limit_default: 2  # 默认请求间隔(秒)
+  concurrent_default: 3   # 默认并发数
+  timeout: 15             # 请求超时(秒)
+  retry: 3               # 重试次数
+  user_agent: Mozilla/5.0 (compatible; LawMonitor/2.0)
+  
+  # 编码探测顺序
+  encoding_order: [utf-8, gbk, gb2312, gb18030]
+  
+  # 输出格式
+  output:
+    json_dir: data/raw
+    dedup_key: title  # 按标题去重
+    min_fields: [title, url, level, type, author]
+    
+  # 飞书同步
+  feishu:
+    app_token: GLupbdKK7aCApgsxO7NcFIGbnJf
+    table_id: tblUkUwxCDBWKDdK
+    batch_size: 10

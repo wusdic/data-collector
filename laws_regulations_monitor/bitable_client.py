@@ -1,12 +1,15 @@
 """
 飞书多维表格客户端
 对接 法规主表 (L1-L7) 和 执法案例库
+使用 requests 直接调用飞书 Open API
 """
 
 import logging
+import base64
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 import os
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +22,8 @@ class BitableClient:
         'L1': 'L1-国家法律',
         'L2': 'L2-行政法规',
         'L3': 'L3-部门/政府规章',
-        'L4': 'L4-规范性文件',  # 注：旧标签
-        'L5': 'L5-国家标准',    # 注：旧标签
+        'L4': 'L4-国家标准',
+        'L5': 'L5-行业标准',
         'L6': 'L6-地方文件',
         'L7': 'L7-地方标准',
     }
@@ -40,22 +43,61 @@ class BitableClient:
     # 状态选项
     STATUS_OPTIONS = ['现行有效', '已废止', '修订中', '征求意见稿']
 
+    API_BASE = "https://open.feishu.cn/open-apis/bitable/v1"
+
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.app_token = config['app_token']
         self.tables = config['tables']
         
+        # 获取 access_token
+        self.access_token = self._get_access_token()
+        
         # 预加载所有现有记录（用于比对）
         self._cache: Dict[str, Dict[str, Any]] = {}  # table_id -> {title: record}
         self._all_records: Dict[str, List[Dict]] = {}
 
+    def _get_access_token(self) -> str:
+        """获取飞书 access_token"""
+        # 优先从环境变量读取
+        token = os.environ.get('FEISHU_ACCESS_TOKEN', '')
+        if token:
+            return token
+        
+        # 从配置文件读取
+        token = self.config.get('access_token', '')
+        if token:
+            return token
+        
+        # 尝试从飞书应用凭证获取（需要 app_id 和 app_secret）
+        app_id = os.environ.get('FEISHU_APP_ID', '')
+        app_secret = os.environ.get('FEISHU_APP_SECRET', '')
+        
+        if app_id and app_secret:
+            try:
+                url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
+                resp = requests.post(url, json={
+                    "app_id": app_id,
+                    "app_secret": app_secret
+                }, timeout=10)
+                data = resp.json()
+                if data.get('code') == 0:
+                    return data.get('tenant_access_token', '')
+            except Exception as e:
+                logger.error(f"获取 access_token 失败: {e}")
+        
+        logger.warning("未配置飞书 access_token，飞书写入功能可能不可用")
+        return ''
+
+    def _headers(self) -> Dict[str, str]:
+        """构建请求头"""
+        return {
+            'Authorization': f'Bearer {self.access_token}',
+            'Content-Type': 'application/json',
+        }
+
     def load_all_records(self) -> None:
         """预加载所有表格的现有记录"""
-        try:
-            from feishu_bitable_app_table_record import feishu_bitable_app_table_record
-        except ImportError:
-            logger.warning("飞书 SDK 未安装，将使用 HTTP API 方式")
-        
         for table_name, table_info in self.tables.items():
             table_id = table_info['table_id']
             records = self._fetch_records(table_id)
@@ -71,22 +113,45 @@ class BitableClient:
             logger.info(f"已加载 {table_name} ({table_id}): {len(records)} 条记录")
 
     def _fetch_records(self, table_id: str, page_size: int = 500) -> List[Dict]:
-        """获取表格所有记录"""
-        # 使用 OpenClaw 的飞书工具
-        try:
-            from feishu_bitable_app_table_record import feishu_bitable_app_table_record
-            result = feishu_bitable_app_table_record(
-                action='list',
-                app_token=self.app_token,
-                table_id=table_id,
-                page_size=page_size
-            )
-            if result and result.get('data'):
-                return result['data'].get('items', [])
-        except Exception as e:
-            logger.error(f"获取记录失败: {e}")
+        """获取表格所有记录（分页）"""
+        if not self.access_token:
+            logger.warning("无 access_token，无法获取记录")
+            return []
         
-        return []
+        records = []
+        page_token = None
+        
+        while True:
+            url = f"{self.API_BASE}/apps/{self.app_token}/tables/{table_id}/records"
+            params = {'page_size': page_size}
+            if page_token:
+                params['page_token'] = page_token
+            
+            try:
+                resp = requests.get(url, headers=self._headers(), params=params, timeout=30)
+                data = resp.json()
+                
+                if data.get('code') != 0:
+                    logger.error(f"获取记录失败: {data.get('msg', 'Unknown error')}")
+                    break
+                
+                items = data.get('data', {}).get('items', [])
+                records.extend(items)
+                
+                # 检查是否还有下一页
+                has_more = data.get('data', {}).get('has_more', False)
+                if not has_more:
+                    break
+                
+                page_token = data.get('data', {}).get('page_token')
+                if not page_token:
+                    break
+                    
+            except Exception as e:
+                logger.error(f"请求记录失败: {e}")
+                break
+        
+        return records
 
     def _extract_title(self, record: Dict) -> str:
         """从记录中提取标题"""
@@ -151,7 +216,7 @@ class BitableClient:
                 # 新建记录
                 result = self._create_record(table_id, record_data)
             
-            if result.get('success') or result.get('code') == 0:
+            if result.get('code') == 0:
                 rid = result.get('data', {}).get('record', {}).get('record_id') or record_id
                 return True, rid
             else:
@@ -163,24 +228,27 @@ class BitableClient:
 
     def _create_record(self, table_id: str, record_data: Dict) -> Dict:
         """创建单条记录"""
-        from feishu_bitable_app_table_record import feishu_bitable_app_table_record
-        return feishu_bitable_app_table_record(
-            action='create',
-            app_token=self.app_token,
-            table_id=table_id,
-            fields=record_data
-        )
+        url = f"{self.API_BASE}/apps/{self.app_token}/tables/{table_id}/records"
+        payload = {'fields': record_data}
+        
+        try:
+            resp = requests.post(url, headers=self._headers(), json=payload, timeout=30)
+            return resp.json()
+        except Exception as e:
+            logger.error(f"创建记录失败: {e}")
+            return {'code': -1, 'msg': str(e)}
 
     def _update_record(self, table_id: str, record_id: str, record_data: Dict) -> Dict:
         """更新记录"""
-        from feishu_bitable_app_table_record import feishu_bitable_app_table_record
-        return feishu_bitable_app_table_record(
-            action='update',
-            app_token=self.app_token,
-            table_id=table_id,
-            record_id=record_id,
-            fields=record_data
-        )
+        url = f"{self.API_BASE}/apps/{self.app_token}/tables/{table_id}/records/{record_id}"
+        payload = {'fields': record_data}
+        
+        try:
+            resp = requests.put(url, headers=self._headers(), json=payload, timeout=30)
+            return resp.json()
+        except Exception as e:
+            logger.error(f"更新记录失败: {e}")
+            return {'code': -1, 'msg': str(e)}
 
     def batch_upsert(self, table_id: str, records: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
