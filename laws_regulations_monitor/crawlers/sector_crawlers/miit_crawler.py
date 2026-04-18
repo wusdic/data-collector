@@ -1,157 +1,168 @@
 """
-工信部爬虫
-来源：工业和信息化部政策文件栏目
+工信部行业标准爬虫
+来源: L5-行业标准 (工信部行业标准)
 """
 
-import logging, re, requests
+import logging
+import re
+import time
+import requests
+from typing import List, Dict, Any
 from bs4 import BeautifulSoup
+
 from engine.base_crawler import BaseCrawler
 
-logger = logging.getLogger('crawlers.miit')
-
-# 工信部已知可访问的政策文件URL
-MIIT_POLICY_URLS = [
-    "https://www.miit.gov.cn/zwgk/zcwj/",
-    "https://www.miit.gov.cn/zwgk/zcwj/index.html",
-]
-
-# 搜索关键词（数据安全相关）
-DATA_SECURITY_KEYWORDS = [
-    "数据安全", "网络安全", "个人信息", "信息安全",
-    "工业数据", "车联网", "智能网联汽车", "工业互联网",
-]
+logger = logging.getLogger(__name__)
 
 
-class MIITCrawler(BaseCrawler):
-    """工信部法规爬虫"""
+class MiitCrawler(BaseCrawler):
+    """工业和信息化部行业标准爬虫"""
 
     NAME = "miit"
 
-    def __init__(self, config: dict = None, **kwargs):
-        if config is None:
-            config = {}
-        config.setdefault('name', '工信部政策法规')
-        config.setdefault('base_url', 'https://www.miit.gov.cn')
+    def __init__(self, config: dict, **kwargs):
         super().__init__(config, **kwargs)
+        self.base_url = config.get('base_url', 'https://www.miit.gov.cn')
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
+            'Referer': 'https://www.miit.gov.cn',
+        })
 
     def crawl(self, config: dict, **kwargs) -> list:
+        """主爬取入口"""
         results = []
+        keywords = kwargs.get('keywords', self.keywords) or ['数据安全', '网络安全', '个人信息保护', '工业数据']
 
-        for base_url in MIIT_POLICY_URLS:
-            try:
-                items = self._crawl_page(base_url)
-                results.extend(items)
-                self._rate_limit()
-            except Exception as e:
-                logger.warning(f"工信部爬取失败 [{base_url}]: {e}")
+        # 1. 爬首页（主要来源）
+        try:
+            items = self._crawl_homepage()
+            results.extend(items)
+            logger.info(f"  MIIT 首页: {len(items)} 条")
+        except Exception as e:
+            logger.warning(f"  MIIT 首页失败: {e}")
 
-        # 关键词过滤
-        if self.keywords:
-            filtered = [r for r in results if self.matches_keywords(r.get('title', ''))]
-            logger.info(f"工信部: {len(results)} 条原始 → {len(filtered)} 条关键词过滤后")
-            results = filtered
-        else:
-            logger.info(f"工信部: 获取 {len(results)} 条")
+        self._rate_limit()
+
+        # 2. 爬政策文件栏目
+        try:
+            items = self._crawl_policy_section()
+            results.extend(items)
+            logger.info(f"  MIIT 政策文件: {len(items)} 条")
+        except Exception as e:
+            logger.warning(f"  MIIT 政策文件失败: {e}")
+
+        self._rate_limit()
 
         return self.deduplicate(results)
 
-    def _crawl_page(self, url: str) -> list:
-        """爬取单个列表页"""
-        resp = self._http_get(url)
-        if not resp:
-            return []
+    def _crawl_homepage(self) -> list:
+        """爬取工信部首页"""
+        results = []
+        url = 'https://www.miit.gov.cn/'
+        html = self._fetch(url)
+        if not html:
+            return results
 
-        soup = BeautifulSoup(resp, 'html.parser')
-        items = []
+        soup = BeautifulSoup(html, 'html.parser')
+        for a in soup.find_all('a', href=True):
+            title = a.get_text(strip=True)
+            if len(title) < 6:
+                continue
+            href = a.get('href', '')
+            if href.startswith('/'):
+                href = 'https://www.miit.gov.cn' + href
 
-        # 工信部网站常见列表选择器
-        selectors = [
-            '.list-item a', '.article-list a', '.news-list a',
-            '.zwgk-list a', 'ul li a', '.policy-list a',
-            'table a', '.content a',
-        ]
+            # 过滤关键词
+            if self.keywords:
+                if not self.matches_keywords(title):
+                    continue
+            else:
+                # 默认关注数据安全相关
+                if not any(kw in title for kw in ['数据安全', '网络安全', '个人信息', '工业数据', '信息安全', '数字化', '数字经济', '通信', '电子', '无线电']):
+                    continue
 
-        for selector in selectors:
-            links = soup.select(selector)
-            if links:
-                for a in links:
-                    title = a.get_text(strip=True)
-                    href = a.get('href', '')
-                    if not title or len(title) < 5:
-                        continue
-                    # 标准化URL
-                    href = self._make_url(href, 'https://www.miit.gov.cn')
-                    if not href:
-                        continue
-                    # 过滤非政策文件
-                    if any(k in title for k in ['通知', '公告', '公示', '征求意见']):
-                        pass  # 保留
-                    items.append({
-                        'title': title,
-                        'url': href,
-                        'date': self._extract_date_from_text(a.get_text()),
-                        'author': '工业和信息化部',
-                        'level': 'L3',
-                        'type': '部门规章',
-                        'source': 'miit',
-                    })
-                if items:
-                    break
+            date_m = re.search(r'(\d{4})-(\d{1,2})-(\d{1,2})', str(a))
+            date = f"{date_m.group(1)}-{date_m.group(2):0>2}-{date_m.group(3):0>2}" if date_m else ''
 
-        # 也从正文页提取日期
-        for item in items:
-            if not item.get('date'):
-                item['date'] = self._extract_date_from_detail(item['url'])
+            results.append({
+                'title': title,
+                'url': href,
+                'date': date,
+                'level': 'L5',
+                'type': '行业标准',
+                'author': '工业和信息化部',
+                'source_id': 'miit_industry_std',
+                'status': self.infer_status(title),
+                'doc_number': self.extract_doc_number(title),
+            })
+        return results
 
-        return items
+    def _crawl_policy_section(self) -> list:
+        """爬取工信部政策文件栏目"""
+        results = []
+        url = 'https://www.miit.gov.cn/zwgk/zcwj/'
+        html = self._fetch(url)
+        if not html:
+            return results
 
-    def _extract_date_from_text(self, text: str) -> str:
-        """从文本片段中提取日期"""
-        m = re.search(r'(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})', text)
-        if m:
-            return f"{m.group(1)}-{m.group(2).zfill(2)}-{m.group(3).zfill(2)}"
-        return ''
+        soup = BeautifulSoup(html, 'html.parser')
+        for a in soup.find_all('a', href=True):
+            title = a.get_text(strip=True)
+            if len(title) < 6:
+                continue
+            href = a.get('href', '')
+            if href.startswith('/'):
+                href = 'https://www.miit.gov.cn' + href
 
-    def _extract_date_from_detail(self, url: str) -> str:
-        """从详情页提取日期"""
+            if self.keywords:
+                if not self.matches_keywords(title):
+                    continue
+
+            parent = a.find_parent(['li', 'tr', 'div'])
+            date_str = ''
+            if parent:
+                date_m = re.search(r'(\d{4})-(\d{1,2})-(\d{1,2})', str(parent))
+                if date_m:
+                    date_str = f"{date_m.group(1)}-{date_m.group(2):0>2}-{date_m.group(3):0>2}"
+
+            results.append({
+                'title': title,
+                'url': href,
+                'date': date_str,
+                'level': 'L5',
+                'type': '行业标准',
+                'author': '工业和信息化部',
+                'source_id': 'miit_industry_std',
+                'status': self.infer_status(title),
+                'doc_number': self.extract_doc_number(title),
+            })
+        return results
+
+    def _fetch(self, url: str) -> str:
+        """HTTP GET"""
         try:
-            resp = self._http_get(url)
-            if not resp:
-                return ''
-            m = re.search(r'(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})', resp[:3000])
-            if m:
-                return f"{m.group(1)}-{m.group(2).zfill(2)}-{m.group(3).zfill(2)}"
-        except:
-            pass
-        return ''
-
-    def _http_get(self, url: str) -> str:
-        """带UA的GET"""
-        try:
-            r = requests.get(url, headers=self.headers, timeout=10)
-            r.encoding = r.apparent_encoding or 'utf-8'
+            r = self.session.get(url, timeout=15)
+            r.raise_for_status()
+            # 政府网站常无Content-Type或编码错误，强制使用UTF-8
+            if r.encoding in (None, 'ISO-8859-1', 'latin1'):
+                r.encoding = 'utf-8'
             return r.text
         except Exception as e:
-            logger.warning(f"HTTP失败 [{url}]: {e}")
+            logger.warning(f"  MIIT fetch [{url[:60]}]: {e}")
             return ''
-
-    def _make_url(self, href: str, base: str) -> str:
-        if not href or href.startswith('javascript') or href.startswith('#'):
-            return ''
-        if href.startswith('http'):
-            return href
-        if href.startswith('/'):
-            return base + href
-        return base + '/' + href
 
 
 if __name__ == '__main__':
-    import yaml, sys
-    sys.path.insert(0, str(__file__).rsplit('/', 2)[0])
+    import yaml
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
 
-    config = {'name': '工信部', 'base_url': 'https://www.miit.gov.cn'}
-    crawler = MIITCrawler(config)
-    results = crawler.crawl(config)
+    config = yaml.safe_load(open('/home/gem/workspace/agent/workspace/data-collector/laws_regulations_monitor/config/levels/l5_industry_standards.yaml'))
+    source = config['sources'][0]
+    crawler = MiitCrawler(source)
+    results = crawler.crawl(source)
     print(f"获取 {len(results)} 条")
     for r in results[:5]:
-        print(f"  [{r.get('date','??')}] {r.get('title','')[:50]}")
+        print(f"  {r.get('date','??')} | {r.get('title','??')[:60]}")

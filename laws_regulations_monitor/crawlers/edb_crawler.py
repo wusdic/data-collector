@@ -570,6 +570,8 @@ class EdbCrawler(BaseCrawler):
         try:
             r = self.session.get(url, timeout=15)
             r.raise_for_status()
+            if r.encoding in (None, 'ISO-8859-1', 'latin1'):
+                r.encoding = 'utf-8'
             return r.text
         except Exception as e:
             logger.warning(f"  EDB fetch [{url[:60]}]: {e}")

@@ -1,132 +1,164 @@
 """
-人民银行/金融监管爬虫
-来源：中国人民银行官网 + 国家金融监督管理总局
+人民银行金融行业标准爬虫
+来源: L5-行业标准 (金融行业标准 JR/T)
 """
 
-import logging, re, requests
+import logging
+import re
+import time
+import requests
+from typing import List, Dict, Any
 from bs4 import BeautifulSoup
+
 from engine.base_crawler import BaseCrawler
 
-logger = logging.getLogger('crawlers.pbc')
-
-# 金融数据安全相关关键词
-FINANCIAL_KEYWORDS = [
-    "数据安全", "金融数据", "个人金融信息", "银行数据",
-    "征信信息", "反洗钱", "数据治理", "网络安全",
-]
+logger = logging.getLogger(__name__)
 
 
-class PBCCrawler(BaseCrawler):
-    """人民银行金融数据标准爬虫"""
+class PbcCrawler(BaseCrawler):
+    """中国人民银行金融行业标准爬虫"""
 
     NAME = "pbc"
 
-    def __init__(self, config: dict = None, **kwargs):
-        if config is None:
-            config = {}
-        config.setdefault('name', '中国人民银行')
-        config.setdefault('base_url', 'https://www.pbc.gov.cn')
+    def __init__(self, config: dict, **kwargs):
         super().__init__(config, **kwargs)
+        self.base_url = config.get('base_url', 'http://www.pbc.gov.cn')
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
+            'Referer': 'http://www.pbc.gov.cn',
+        })
 
     def crawl(self, config: dict, **kwargs) -> list:
+        """主爬取入口"""
         results = []
 
-        # 人民银行首页
-        urls = [
-            ("https://www.pbc.gov.cn/", "首页"),
-            ("https://www.pbc.gov.cn/zhengwugongkai/4081330/4081338/index.html", "政务公开"),
-            ("https://www.pbc.gov.cn/zhengcehuobisi/125207/3870933/3870939/index.html", "金融稳定"),
-        ]
+        # 1. 爬首页（主要来源）
+        try:
+            items = self._crawl_homepage()
+            results.extend(items)
+            logger.info(f"  PBC 首页: {len(items)} 条")
+        except Exception as e:
+            logger.warning(f"  PBC 首页失败: {e}")
 
-        for url, name in urls:
-            try:
-                items = self._crawl_page(url)
-                if items:
-                    results.extend(items)
-                    self._rate_limit()
-            except Exception as e:
-                logger.warning(f"PBC [{name}] 爬取失败: {e}")
+        self._rate_limit()
 
-        logger.info(f"人民银行: 获取 {len(results)} 条")
+        # 2. 爬法律法规栏目（货币政策委员会、金融稳定等）
+        try:
+            items = self._crawl_policy_section()
+            results.extend(items)
+            logger.info(f"  PBC 法律法规: {len(items)} 条")
+        except Exception as e:
+            logger.warning(f"  PBC 法律法规失败: {e}")
+
+        self._rate_limit()
+
         return self.deduplicate(results)
 
-    def _crawl_page(self, url: str) -> list:
-        resp = self._http_get(url)
-        if not resp:
-            return []
+    def _crawl_homepage(self) -> list:
+        """爬取人民银行首页"""
+        results = []
+        url = 'http://www.pbc.gov.cn/'
+        html = self._fetch(url)
+        if not html:
+            return results
 
-        soup = BeautifulSoup(resp, 'html.parser')
-        items = []
-
+        soup = BeautifulSoup(html, 'html.parser')
         for a in soup.find_all('a', href=True):
             title = a.get_text(strip=True)
+            if len(title) < 5:
+                continue
             href = a.get('href', '')
-            if not title or len(title) < 5:
+            if href.startswith('/'):
+                href = 'http://www.pbc.gov.cn' + href
+
+            # 过滤数据安全/金融相关信息
+            if not any(kw in title for kw in ['数据安全', '金融数据', '个人金融', '征信', '反洗钱', '网络安全', '信息安全', 'JR/T', '金融稳定', '银行监管']):
                 continue
-            # 关键词过滤
-            if self.keywords:
-                if not any(k in title for k in self.keywords):
-                    continue
-            href = self._make_url(href, 'https://www.pbc.gov.cn')
-            if not href:
-                continue
-            date = self._extract_date_from_text(a.get_text())
-            if not date:
-                date = self._extract_date_from_detail(href)
-            is_draft = any(k in title for k in ['征求意见', '草案'])
-            items.append({
+
+            date_m = re.search(r'(\d{4})-(\d{1,2})-(\d{1,2})', str(a))
+            date = f"{date_m.group(1)}-{date_m.group(2):0>2}-{date_m.group(3):0>2}" if date_m else ''
+
+            results.append({
                 'title': title,
                 'url': href,
                 'date': date,
+                'level': 'L5',
+                'type': '金融行业标准',
                 'author': '中国人民银行',
-                'level': 'L3',
-                'type': '部门规章' if not is_draft else '征求意见稿',
-                'status': '征求意见稿' if is_draft else '现行有效',
-                'source': 'pbc',
+                'source_id': 'pbc_financial_std',
+                'status': self.infer_status(title),
+                'doc_number': self.extract_doc_number(title),
             })
-        return items
+        return results
 
-    def _extract_date_from_text(self, text: str) -> str:
-        m = re.search(r'(\d{4})[-/年.](\d{1,2})[-/月.](\d{1,2})', text)
-        if m:
-            return f"{m.group(1)}-{m.group(2).zfill(2)}-{m.group(3).zfill(2)}"
-        return ''
+    def _crawl_policy_section(self) -> list:
+        """爬取货币政策/宏观审慎栏目"""
+        results = []
+        urls = [
+            'http://www.pbc.gov.cn/tiaofasi/144941/index.html',   # 法律法规（货币政策）
+            'http://www.pbc.gov.cn/huobizhengceersi/214481/index.html',  # 宏观审慎
+        ]
+        for url in urls:
+            html = self._fetch(url)
+            if not html:
+                continue
+            soup = BeautifulSoup(html, 'html.parser')
+            for a in soup.find_all('a', href=True):
+                title = a.get_text(strip=True)
+                if len(title) < 5:
+                    continue
+                href = a.get('href', '')
+                if href.startswith('/'):
+                    href = 'http://www.pbc.gov.cn' + href
 
-    def _extract_date_from_detail(self, url: str) -> str:
+                parent = a.find_parent(['li', 'tr', 'div'])
+                date_str = ''
+                if parent:
+                    date_m = re.search(r'(\d{4})-(\d{1,2})-(\d{1,2})', str(parent))
+                    if date_m:
+                        date_str = f"{date_m.group(1)}-{date_m.group(2):0>2}-{date_m.group(3):0>2}"
+
+                if not any(kw in title for kw in ['数据安全', '金融数据', '征信', '反洗钱', '网络安全', 'JR/T', '金融稳定', '银行', '支付']):
+                    if self.keywords and not self.matches_keywords(title):
+                        continue
+
+                results.append({
+                    'title': title,
+                    'url': href,
+                    'date': date_str,
+                    'level': 'L5',
+                    'type': '金融行业标准',
+                    'author': '中国人民银行',
+                    'source_id': 'pbc_financial_std',
+                    'status': self.infer_status(title),
+                    'doc_number': self.extract_doc_number(title),
+                })
+        return results
+
+    def _fetch(self, url: str) -> str:
+        """HTTP GET"""
         try:
-            resp = self._http_get(url)
-            if not resp:
-                return ''
-            m = re.search(r'(\d{4})[-/年.](\d{1,2})[-/月.](\d{1,2})', resp[:3000])
-            if m:
-                return f"{m.group(1)}-{m.group(2).zfill(2)}-{m.group(3).zfill(2)}"
-        except:
-            pass
-        return ''
-
-    def _http_get(self, url: str) -> str:
-        try:
-            r = requests.get(url, headers=self.headers, timeout=12)
-            r.encoding = r.apparent_encoding or 'utf-8'
+            r = self.session.get(url, timeout=15)
+            r.raise_for_status()
+            if r.encoding in (None, 'ISO-8859-1', 'latin1'):
+                r.encoding = 'utf-8'
             return r.text
         except Exception as e:
-            logger.warning(f"HTTP失败 [{url[:50]}]: {e}")
+            logger.warning(f"  PBC fetch [{url[:60]}]: {e}")
             return ''
-
-    def _make_url(self, href: str, base: str) -> str:
-        if not href or href.startswith('javascript') or href.startswith('#'):
-            return ''
-        if href.startswith('http'):
-            return href
-        if href.startswith('/'):
-            return base + href
-        return base + '/' + href
 
 
 if __name__ == '__main__':
-    config = {'name': '人民银行', 'base_url': 'https://www.pbc.gov.cn'}
-    crawler = PBCCrawler(config)
-    results = crawler.crawl(config, keywords=FINANCIAL_KEYWORDS)
+    import yaml
+    logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+    config = yaml.safe_load(open('/home/gem/workspace/agent/workspace/data-collector/laws_regulations_monitor/config/levels/l5_industry_standards.yaml'))
+    source = config['sources'][1]
+    crawler = PbcCrawler(source)
+    results = crawler.crawl(source)
     print(f"获取 {len(results)} 条")
     for r in results[:5]:
-        print(f"  [{r.get('date','??')}] {r.get('title','')[:50]}")
+        print(f"  {r.get('date','??')} | {r.get('title','??')[:70]}")
