@@ -10,7 +10,7 @@ import re
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlencode
 
-from .base_crawler import BaseCrawler
+from engine.base_crawler import BaseCrawler
 
 logger = logging.getLogger(__name__)
 

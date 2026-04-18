@@ -9,8 +9,9 @@ import logging
 from typing import List, Dict, Any
 
 import requests
+from bs4 import BeautifulSoup
 
-from .base_crawler import BaseCrawler
+from engine.base_crawler import BaseCrawler
 
 logger = logging.getLogger(__name__)
 
@@ -48,13 +49,8 @@ class SAMRCrawler(BaseCrawler):
         return self._deduplicate(results)
 
     def _search_by_keyword(self, keyword: str, max_pages: int = 2) -> List[Dict[str, Any]]:
-        results = []
-        for page in range(1, max_pages + 1):
-            items = self._fetch_page(keyword, page)
-            if not items:
-                break
-            results.extend(items)
-        return results
+        # 优先走 API，失败自动 fallback
+        return self._search_api(keyword, max_pages)
 
     def _fetch_page(self, keyword: str, page_num: int) -> List[Dict[str, Any]]:
         params = {
@@ -118,6 +114,102 @@ class SAMRCrawler(BaseCrawler):
                 'download_url': '',
             })
 
+        return results
+
+    def _search_api(self, keyword: str, max_pages: int = 2) -> List[Dict[str, Any]]:
+        """
+        优先通过 open.samr.gov.cn API 搜索，失败则 fallback 到 HTML 爬取。
+        """
+        try:
+            results = self._search_open_api(keyword, max_pages)
+            if results:
+                return results
+        except Exception as e:
+            logger.warning(f"  open.samr.gov.cn API 失败 [{keyword}], 切换 fallback: {e}")
+
+        # Fallback: 从 www.samr.gov.cn 搜索页 HTML 提取
+        return self._fallback_html_search(keyword, max_pages)
+
+    def _search_open_api(self, keyword: str, max_pages: int = 2) -> List[Dict[str, Any]]:
+        """open.samr.gov.cn 正式 API"""
+        results = []
+        for page in range(1, max_pages + 1):
+            items = self._fetch_page(keyword, page)
+            if not items:
+                break
+            results.extend(items)
+        return results
+
+    def _fallback_html_search(self, keyword: str, max_pages: int = 2) -> List[Dict[str, Any]]:
+        """
+        Fallback: 从 www.samr.gov.cn 搜索页 HTML 提取。
+        当 open.samr.gov.cn DNS 不通时使用。
+        """
+        search_url = f"https://www.samr.gov.cn/search/"
+        results = []
+        headers = {
+            "User-Agent": "Mozilla/5.0 (compatible; LawMonitor/1.0)",
+            "Accept": "text/html",
+        }
+
+        for page in range(1, max_pages + 1):
+            try:
+                params = {"q": keyword, "page": str(page)}
+                resp = requests.get(search_url, params=params, headers=headers, timeout=15)
+                resp.raise_for_status()
+            except Exception as e:
+                logger.warning(f"  www.samr.gov.cn 请求失败 [{keyword} page={page}]: {e}")
+                break
+
+            soup = BeautifulSoup(resp.text, 'html.parser')
+
+            # 尝试多种选择器（SAMR 搜索页结构可能有变化）
+            items = (
+                soup.select('.search-result .item') or
+                soup.select('.result-item') or
+                soup.select('article') or
+                soup.select('.list-item')
+            )
+
+            if not items:
+                # 通用：找所有含链接的条目
+                items = soup.select('a[href*="/std/"]')
+
+            for item in items[:20]:
+                title_el = item.select_one('h3, .title, .t, [class*="title"]') or item
+                title = title_el.get_text(strip=True) if title_el else item.get_text(strip=True)
+                if not title:
+                    continue
+
+                # 提取链接
+                link_el = item.select_one('a[href]') if title_el != item else item
+                href = link_el.get('href', '') if link_el else ''
+                if href and not href.startswith('http'):
+                    href = 'https://www.samr.gov.cn' + href
+
+                # 摘要
+                snippet_el = item.select_one('.snippet, .desc, .summary, [class*="desc"]')
+                snippet = snippet_el.get_text(strip=True) if snippet_el else ''
+
+                # 日期（尝试从文本中提取）
+                import re
+                date_m = re.search(r'(\d{4}-\d{2}-\d{2}|\d{4}年\d{1,2}月\d{1,2}日)', item.get_text())
+                date = date_m.group(1) if date_m else ''
+
+                results.append({
+                    'title': re.sub(r'\s+', ' ', title),
+                    'url': href,
+                    'date': date,
+                    'doc_number': '',
+                    'author': '国家市场监督管理总局',
+                    'level': 'L4',
+                    'type': '国家标准',
+                    'status': '现行有效',
+                    'summary': snippet,
+                    'download_url': '',
+                })
+
+        logger.info(f"  SAMR fallback [{keyword}]: {len(results)} 条")
         return results
 
     def _deduplicate(self, results: List[Dict]) -> List[Dict[str, Any]]:

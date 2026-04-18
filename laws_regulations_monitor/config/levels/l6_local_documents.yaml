@@ -1,194 +1,124 @@
-# ============================================================
-# L6 地方文件 配置
-# 层级代码: L6 | 版本: 2026-04-17
-# ============================================================
-
-meta:
-  code: L6
-  name: 地方文件
-  version: "2026-04-17"
-  description: >
-    各省市人民代表大会常务委员会或人民政府发布的地方性法规、
-    条例、办法、通知等文件。
-    上海、北京、广东、浙江、深圳等地已出台数据条例。
-    地方文件在对应行政区域内具有法律效力。
-
-# ----------------------------------------------------------
-# 字段定义
-# ----------------------------------------------------------
-fields:
-  # 通用字段
-  - field_name: 法规标题
-    field_id: title
-    type: text
-    required: true
-    description: 法规文件标题
-
-  - field_name: 层级
-    field_id: level
-    type: text
-    required: true
-    description: 固定值 L6
-
-  - field_name: 法规类型
-    field_id: law_type
-    type: single_select
-    required: true
-    description: 地方性法规/地方政府规章/规范性文件/通知
-
-  - field_name: 发文机关
-    field_id: author
-    type: text
-    required: true
-    description: 省市人民代表大会常务委员会/人民政府/大数据局
-
-  - field_name: 文号
-    field_id: doc_number
-    type: text
-    required: false
-    description: 地方文号，如沪府发[2022]X号
-
-  - field_name: 发布日期
-    field_id: publish_date
-    type: date
-    required: true
-    description: 官方发布日期
-
-  - field_name: 生效日期
-    field_id: effective_date
-    type: date
-    required: false
-    description: 法规生效日期
-
-  - field_name: 状态
-    field_id: status
-    type: single_select
-    required: true
-    description: 现行/废止/修订
-
-  - field_name: 原文链接
-    field_id: source_url
-    type: hyperlink
-    required: true
-    description: 官方来源URL
-
-  - field_name: 标签
-    field_id: tags
-    type: multi_select
-    required: false
-    description: 关键词标签
-
-  # L6 独有大字段
-  - field_name: 省份/城市
-    field_id: region
-    type: single_select
-    required: true
-    description: 省市名称，如上海市/北京市/广东省/浙江省/深圳市
-
-  - field_name: 效力范围
-    field_id: jurisdiction
-    type: text
-    required: false
-    description: 适用行政区划范围
-
-  - field_name: 全文存储路径
-    field_id: local_path
-    type: text
-    required: false
-    description: 本地全文PDF/DOC路径
-
-# ----------------------------------------------------------
-# 信息源
-# ----------------------------------------------------------
-sources:
-  - source_id: local_shanghai
-    name: 上海市数据条例/法规
-    url: https://www.shanghai.gov.cn
-    type: html_server
-    method: http_get
-    parser: parse_shanghai_html
-    status: untested
-    rate_limit: 3
-    note: 上海市数据条例，需汇总地方数据条例清单
-
-  - source_id: local_beijing
-    name: 北京市数据条例/法规
-    url: https://www.beijing.gov.cn
-    type: html_server
-    method: http_get
-    parser: parse_beijing_html
-    status: untested
-    rate_limit: 3
-    note: 北京市数据条例，待测试
-
-  - source_id: local_guangdong
-    name: 广东省数据条例
-    url: https://www.gd.gov.cn
-    type: html_server
-    method: http_get
-    parser: parse_guangdong_html
-    status: untested
-    rate_limit: 3
-    note: 广东省数据条例，待测试
-
-  - source_id: local_zhejiang
-    name: 浙江省数据条例
-    url: https://www.zj.gov.cn
-    type: html_server
-    method: http_get
-    parser: parse_zhejiang_html
-    status: untested
-    rate_limit: 3
-    note: 浙江省数据条例，待测试
-
-  - source_id: local_shenzhen
-    name: 深圳市数据条例
-    url: https://www.sz.gov.cn
-    type: html_server
-    method: http_get
-    parser: parse_shenzhen_html
-    status: untested
-    rate_limit: 3
-    note: 深圳市数据条例，待测试
-
-  - source_id: local_other
-    name: 其他省市法规（占位）
-    url: ""
-    type: html_server
-    method: http_get
-    parser: parse_local_html
-    status: untested
-    note: 待扩展天津/重庆/江苏/四川/贵州等省市
-
-# ----------------------------------------------------------
-# 爬取参数
-# ----------------------------------------------------------
+bitable:
+  field_mappings:
+    全文存储路径: local_path
+    原文链接: source_url
+    发布日期: publish_date
+    发文机关: author
+    层级: level
+    效力范围: jurisdiction
+    文号: doc_number
+    标签: tags
+    法规标题: title
+    法规类型: law_type
+    状态: status
+    生效日期: effective_date
+    省份/城市: region
+  table_name: 法规主表
 crawl_params:
+  enable_full_text_download: true
+  file_types:
+  - pdf
+  - doc
+  - docx
+  keywords:
+  - 数据条例
+  - 数据安全
+  - 个人信息
+  - 数字经济
+  - 促进条例
   lookback_days: 365
-  keywords: [数据条例, 数据安全, 个人信息, 数字经济, 促进条例]
+  priority: medium
+  regions:
+  - 上海
+  - 北京
+  - 广东
+  - 浙江
+  - 深圳
+  - 天津
+  - 重庆
+  - 江苏
+  - 四川
+  - 贵州
   sort_by: publish_date
   sort_order: desc
-  priority: medium
-  enable_full_text_download: true
-  file_types: [pdf, doc, docx]
-  regions: [上海, 北京, 广东, 浙江, 深圳, 天津, 重庆, 江苏, 四川, 贵州]
+fields:
+- description: 法规文件标题
+  field_id: title
+  field_name: 法规标题
+  required: true
+  type: text
+- description: 固定值 L6
+  field_id: level
+  field_name: 层级
+  required: true
+  type: text
+- description: 地方性法规/地方政府规章/规范性文件/通知
+  field_id: law_type
+  field_name: 法规类型
+  required: true
+  type: single_select
+- description: 省市人民代表大会常务委员会/人民政府/大数据局
+  field_id: author
+  field_name: 发文机关
+  required: true
+  type: text
+- description: 地方文号，如沪府发[2022]X号
+  field_id: doc_number
+  field_name: 文号
+  required: false
+  type: text
+- description: 官方发布日期
+  field_id: publish_date
+  field_name: 发布日期
+  required: true
+  type: date
+- description: 法规生效日期
+  field_id: effective_date
+  field_name: 生效日期
+  required: false
+  type: date
+- description: 现行/废止/修订
+  field_id: status
+  field_name: 状态
+  required: true
+  type: single_select
+- description: 官方来源URL
+  field_id: source_url
+  field_name: 原文链接
+  required: true
+  type: hyperlink
+- description: 关键词标签
+  field_id: tags
+  field_name: 标签
+  required: false
+  type: multi_select
+- description: 省市名称，如上海市/北京市/广东省/浙江省/深圳市
+  field_id: region
+  field_name: 省份/城市
+  required: true
+  type: single_select
+- description: 适用行政区划范围
+  field_id: jurisdiction
+  field_name: 效力范围
+  required: false
+  type: text
+- description: 本地全文PDF/DOC路径
+  field_id: local_path
+  field_name: 全文存储路径
+  required: false
+  type: text
+meta:
+  code: L6
+  description: '各省市人民代表大会常务委员会或人民政府发布的地方性法规、 条例、办法、通知等文件。 上海、北京、广东、浙江、深圳等地已出台数据条例。
+    地方文件在对应行政区域内具有法律效力。
 
-# ----------------------------------------------------------
-# 飞书多维表格字段映射
-# ----------------------------------------------------------
-bitable:
-  table_name: 法规主表
-  field_mappings:
-    法规标题: title
-    层级: level
-    法规类型: law_type
-    发文机关: author
-    文号: doc_number
-    发布日期: publish_date
-    生效日期: effective_date
-    状态: status
-    原文链接: source_url
-    标签: tags
-    省份/城市: region
-    效力范围: jurisdiction
-    全文存储路径: local_path
+    '
+  name: 地方文件
+  version: '2026-04-17'
+sources:
+- name: 各省市政府官网
+  note: 需逐省测试，本沙箱无法验证
+  status: blocked
+- name: CAC地方政策频道
+  note: 待测试
+  status: untested

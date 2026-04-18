@@ -1,3 +1,8 @@
+"""
+[废弃] 此文件已由 scheduler/job_scheduler.py + engine/crawler_engine.py 替代
+请使用: python -m scheduler.job_scheduler 或 python -m engine.crawler_engine
+"""
+
 import sys, os, json, logging, time, re
 from datetime import datetime
 import requests

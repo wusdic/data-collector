@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """
+[废弃] 此文件已由 scheduler/job_scheduler.py + engine/crawler_engine.py 替代
+请使用: python -m scheduler.job_scheduler 或 python -m engine.crawler_engine
+"""
 定时任务设置脚本
 设置每周自动运行的 cron job
 """

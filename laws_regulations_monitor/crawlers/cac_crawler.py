@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 import requests
 from bs4 import BeautifulSoup
 
-from .base_crawler import BaseCrawler
+from engine.base_crawler import BaseCrawler
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +46,12 @@ class CACCrawler(BaseCrawler):
         self.api_url = f"{self.base_url}/cms/JsonList"
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (compatible; LawMonitor/1.0)',
-            'Referer': self.base_url,
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Accept-Language': 'zh-CN,zh;q=0.9',
+            'Referer': 'https://www.cac.gov.cn/',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded',
         })
 
     def crawl(self, **kwargs) -> List[Dict[str, Any]]:
@@ -122,7 +126,11 @@ class CACCrawler(BaseCrawler):
 
         resp = self.session.get(self.api_url, params=params, timeout=10)
         resp.raise_for_status()
-        data = resp.json()
+
+        try:
+            data = resp.json()
+        except json.JSONDecodeError:
+            data = {'list': [], 'total': 0}
 
         items = data.get('list', [])
         total = data.get('total', 0)

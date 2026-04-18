@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """
+[废弃] 此文件已由 scheduler/job_scheduler.py + engine/crawler_engine.py 替代
+请使用: python -m scheduler.job_scheduler 或 python -m engine.crawler_engine
+"""
 法规监控整合脚本 - 最终版
 使用可及来源抓取法规，对接飞书多维表格
 

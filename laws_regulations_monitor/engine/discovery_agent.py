@@ -16,10 +16,12 @@ import json
 import time
 import logging
 import hashlib
+import requests
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Set
 from threading import Thread, Event
 import threading
+from bs4 import BeautifulSoup
 
 # Setup
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -286,12 +288,9 @@ class DiscoveryAgent:
 
     def _search_keyword(self, keyword: str) -> List[Dict[str, Any]]:
         """
-        搜索单个关键词
-        当前为框架预留，实际搜索能力待接入
+        搜索单个关键词（接入 DuckDuckGo HTML 搜索，无需 API Key）
         """
-        # 框架预留：这里应接入真实搜索
-        # 如 DuckDuckGo、百度、搜狗搜索等
-        results = self.searcher.search(keyword, count=10)
+        results = self._duckduckgo_search(keyword, max_results=10)
 
         leads = []
         for r in results:
@@ -306,6 +305,70 @@ class DiscoveryAgent:
                 'crawled': False,
             })
         return leads
+
+    def _duckduckgo_search(self, keyword: str, max_results: int = 10) -> list:
+        """
+        DuckDuckGo HTML 搜索（无需 API Key）。
+        解析搜索结果页，提取标题、URL、摘要和日期信息。
+        """
+        url = "https://duckduckgo.com/html/"
+        params = {"q": keyword, "kl": "zh-cn"}
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; LawMonitor/1.0)"}
+
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=15)
+            resp.raise_for_status()
+        except Exception as e:
+            logger.warning(f"  DuckDuckGo 请求失败 [{keyword[:20]}]: {e}")
+            return []
+
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        results = []
+
+        for item in soup.select('.result')[:max_results]:
+            title_el = item.select_one('.result__title a')
+            snippet_el = item.select_one('.result__snippet')
+            if not title_el:
+                continue
+
+            title = title_el.get_text(strip=True)
+            href = title_el.get('href', '')
+            snippet = snippet_el.get_text(strip=True) if snippet_el else ""
+
+            # 从 snippet 末尾尝试提取日期（常见格式："2024年1月1日" 或 "Jan 1, 2024"）
+            date = self._extract_date_from_snippet(snippet)
+
+            results.append({
+                'title': title,
+                'url': href,
+                'snippet': snippet,
+                'source': 'duckduckgo',
+                'date': date,
+            })
+
+        return results
+
+    def _extract_date_from_snippet(self, snippet: str) -> str:
+        """
+        从 snippet 末尾尝试提取发布日期。
+        匹配格式：YYYY-MM-DD、YYYY年MM月DD日、Mon DD, YYYY 等。
+        """
+        import re
+        # 取 snippet 末尾 80 字符尝试匹配
+        tail = snippet[-80:]
+        # 2024-01-01
+        m = re.search(r'(\d{4}-\d{2}-\d{2})', tail)
+        if m:
+            return m.group(1)
+        # 2024年1月1日
+        m = re.search(r'(\d{4}年\d{1,2}月\d{1,2}日)', tail)
+        if m:
+            return m.group(1)
+        # Jan 1, 2024 或 January 1, 2024
+        m = re.search(r'((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4})', tail, re.IGNORECASE)
+        if m:
+            return m.group(1)
+        return ""
 
     def _classify_lead(self, title: str, snippet: str) -> str:
         """判断线索类型"""

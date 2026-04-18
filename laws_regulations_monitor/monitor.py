@@ -1,4 +1,7 @@
 """
+[废弃] 此文件已由 scheduler/job_scheduler.py + engine/crawler_engine.py 替代
+请使用: python -m scheduler.job_scheduler 或 python -m engine.crawler_engine
+
 法律法规监控主程序
 调度爬虫 → 比对 → 存储 → 通知
 """

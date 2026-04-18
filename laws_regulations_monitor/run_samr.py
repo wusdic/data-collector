@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """
+[废弃] 此文件已由 scheduler/job_scheduler.py + engine/crawler_engine.py 替代
+请使用: python -m scheduler.job_scheduler 或 python -m engine.crawler_engine
+"""
 SAMR 国家标准爬虫 - 独立运行脚本
 直接爬取 openstd.samr.gov.cn
 """

@@ -1,227 +1,145 @@
-# ============================================================
-# EDB 执法案例库 配置
-# 层级代码: EDB | 版本: 2026-04-17
-# ============================================================
-
-meta:
-  code: EDB
-  name: 执法案例库
-  version: "2026-04-17"
-  description: >
-    监管机构公开发布的执法案例、行政处罚决定书。
-    包括：国家互联网信息办公室、工业和信息化部、
-    公安部、市场监管总局等部门的执法记录和处罚决定。
-    案例库是合规体系建设的重要参考，用于了解执法口径和典型违规行为。
-
-# ----------------------------------------------------------
-# 字段定义
-# ----------------------------------------------------------
-fields:
-  # 通用字段
-  - field_name: 案例标题
-    field_id: title
-    type: text
-    required: true
-    description: 处罚决定书标题或案例简称
-
-  - field_name: 层级
-    field_id: level
-    type: text
-    required: true
-    description: 固定值 EDB
-
-  - field_name: 案例类型
-    field_id: case_type
-    type: single_select
-    required: true
-    description: 行政处罚决定书/典型案例/监管约谈/专项行动
-
-  - field_name: 处罚/审理机关
-    field_id: authority
-    type: text
-    required: true
-    description: 网信办/工信部/公安部/市场监管总局/省市监局
-
-  - field_name: 案例日期
-    field_id: case_date
-    type: date
-    required: true
-    description: 处罚决定日期或案例发布日期
-
-  - field_name: 涉及法规
-    field_id: related_laws
-    type: multi_select
-    required: false
-    description: 涉及的法规层级或具体法规名称
-
-  - field_name: 案情摘要
-    field_id: summary
-    type: text
-    required: false
-    description: 简要描述违规事实
-
-  - field_name: 认定要点
-    field_id: key_points
-    type: text
-    required: false
-    description: 监管部门认定的违规行为要点
-
-  - field_name: 处罚结果
-    field_id: result
-    type: text
-    required: false
-    description: 处罚内容，如罚款金额/责令改正/下架App
-
-  - field_name: 原文链接
-    field_id: source_url
-    type: hyperlink
-    required: true
-    description: 官方来源URL
-
-  - field_name: 标签
-    field_id: tags
-    type: multi_select
-    required: false
-    description: 关键词标签
-
-  # EDB 独有字段
-  - field_name: 被处罚主体
-    field_id: violator
-    type: text
-    required: false
-    description: 被处罚的企业/单位/个人名称
-
-  - field_name: 处罚文号
-    field_id: penalty_number
-    type: text
-    required: false
-    description: 行政处罚决定书文号
-
-  - field_name: 处罚类型
-    field_id: penalty_type
-    type: multi_select
-    required: false
-    description: 罚款/责令改正/警告/下架/吊销许可证/行政拘留
-
-  - field_name: 罚款金额
-    field_id: penalty_amount
-    type: number
-    required: false
-    description: 罚款金额（万元），无罚款则留空
-
-  - field_name: 整改要求
-    field_id: remediation
-    type: text
-    required: false
-    description: 整改要求或期限
-
-  - field_name: 全文存储路径
-    field_id: local_path
-    type: text
-    required: false
-    description: 本地全文PDF/DOC路径
-
-# ----------------------------------------------------------
-# 信息源
-# ----------------------------------------------------------
-sources:
-  - source_id: cac_enforcement
-    name: 网信办行政处罚公示
-    url: https://www.chinalaw.gov.cn
-    type: html_server
-    method: http_get
-    parser: parse_cac_enforcement_html
-    status: untested
-    rate_limit: 3
-    note: CAC 行政处罚决定书，待测试
-
-  - source_id: miit_enforcement
-    name: 工信部行政处罚
-    url: https://www.miit.gov.cn
-    search_url: https://www.miit.gov.cn/column/4634/
-    type: html_server
-    method: http_get
-    parser: parse_miit_enforcement_html
-    status: untested
-    rate_limit: 3
-    note: 工信部行政处罚公示，待测试
-
-  - source_id: samr_enforcement
-    name: 市场监管总局行政处罚
-    url: https://www.samr.gov.cn
-    type: html_server
-    method: http_get
-    parser: parse_samr_enforcement_html
-    status: untested
-    rate_limit: 3
-    note: 市监总局行政处罚公示，待测试
-
-  - source_id: mps_enforcement
-    name: 公安部网络安全执法
-    url: https://www.mps.gov.cn
-    type: html_server
-    method: http_get
-    parser: parse_mps_enforcement_html
-    status: untested
-    rate_limit: 3
-    note: 公安部网络安全执法，待测试
-
-  - source_id: spp_enforcement
-    name: 最高检典型案例
-    url: http://www.spp.gov.cn
-    search_url: http://www.spp.gov.cn/jcxy/
-    type: html_server
-    method: http_get
-    parser: parse_spp_cases_html
-    status: untested
-    rate_limit: 3
-    encoding: gbk
-    note: 最高检公布的数据安全/个人信息保护典型案例
-
-  - source_id: spc_enforcement
-    name: 最高法典型案例
-    url: https://www.court.gov.cn
-    search_url: https://www.court.gov.cn/fabu/jiedu/
-    type: html_server
-    method: http_get
-    parser: parse_spc_cases_html
-    status: untested
-    rate_limit: 3
-    encoding: gbk
-    note: 最高法公布的数据安全相关案例
-
-# ----------------------------------------------------------
-# 爬取参数
-# ----------------------------------------------------------
-crawl_params:
-  lookback_days: 730
-  keywords: [数据安全, 个人信息, App违法违规, 网络安全, 行政处罚, 执法案例]
-  sort_by: case_date
-  sort_order: desc
-  priority: high
-  enable_full_text_download: true
-  file_types: [pdf]
-
-# ----------------------------------------------------------
-# 飞书多维表格字段映射
-# ----------------------------------------------------------
 bitable:
-  table_name: 执法案例库
   field_mappings:
-    案例标题: title
-    层级: level
-    案例类型: case_type
-    处罚/审理机关: authority
-    案例日期: case_date
-    涉及法规: related_laws
-    案情摘要: summary
-    认定要点: key_points
-    处罚结果: result
+    全文存储路径: local_path
     原文链接: source_url
-    标签: tags
-    被处罚主体: violator
+    处罚/审理机关: authority
     处罚文号: penalty_number
     处罚类型: penalty_type
-    罚款金额: penalty_amount
+    处罚结果: result
+    层级: level
     整改要求: remediation
-    全文存储路径: local_path
+    标签: tags
+    案例日期: case_date
+    案例标题: title
+    案例类型: case_type
+    案情摘要: summary
+    涉及法规: related_laws
+    罚款金额: penalty_amount
+    被处罚主体: violator
+    认定要点: key_points
+  table_name: 执法案例库
+crawl_params:
+  enable_full_text_download: true
+  file_types:
+  - pdf
+  keywords:
+  - 数据安全
+  - 个人信息
+  - App违法违规
+  - 网络安全
+  - 行政处罚
+  - 执法案例
+  lookback_days: 730
+  priority: high
+  sort_by: case_date
+  sort_order: desc
+fields:
+- description: 处罚决定书标题或案例简称
+  field_id: title
+  field_name: 案例标题
+  required: true
+  type: text
+- description: 固定值 EDB
+  field_id: level
+  field_name: 层级
+  required: true
+  type: text
+- description: 行政处罚决定书/典型案例/监管约谈/专项行动
+  field_id: case_type
+  field_name: 案例类型
+  required: true
+  type: single_select
+- description: 网信办/工信部/公安部/市场监管总局/省市监局
+  field_id: authority
+  field_name: 处罚/审理机关
+  required: true
+  type: text
+- description: 处罚决定日期或案例发布日期
+  field_id: case_date
+  field_name: 案例日期
+  required: true
+  type: date
+- description: 涉及的法规层级或具体法规名称
+  field_id: related_laws
+  field_name: 涉及法规
+  required: false
+  type: multi_select
+- description: 简要描述违规事实
+  field_id: summary
+  field_name: 案情摘要
+  required: false
+  type: text
+- description: 监管部门认定的违规行为要点
+  field_id: key_points
+  field_name: 认定要点
+  required: false
+  type: text
+- description: 处罚内容，如罚款金额/责令改正/下架App
+  field_id: result
+  field_name: 处罚结果
+  required: false
+  type: text
+- description: 官方来源URL
+  field_id: source_url
+  field_name: 原文链接
+  required: true
+  type: hyperlink
+- description: 关键词标签
+  field_id: tags
+  field_name: 标签
+  required: false
+  type: multi_select
+- description: 被处罚的企业/单位/个人名称
+  field_id: violator
+  field_name: 被处罚主体
+  required: false
+  type: text
+- description: 行政处罚决定书文号
+  field_id: penalty_number
+  field_name: 处罚文号
+  required: false
+  type: text
+- description: 罚款/责令改正/警告/下架/吊销许可证/行政拘留
+  field_id: penalty_type
+  field_name: 处罚类型
+  required: false
+  type: multi_select
+- description: 罚款金额（万元），无罚款则留空
+  field_id: penalty_amount
+  field_name: 罚款金额
+  required: false
+  type: number
+- description: 整改要求或期限
+  field_id: remediation
+  field_name: 整改要求
+  required: false
+  type: text
+- description: 本地全文PDF/DOC路径
+  field_id: local_path
+  field_name: 全文存储路径
+  required: false
+  type: text
+meta:
+  code: EDB
+  description: '监管机构公开发布的执法案例、行政处罚决定书。 包括：国家互联网信息办公室、工业和信息化部、 公安部、市场监管总局等部门的执法记录和处罚决定。
+    案例库是合规体系建设的重要参考，用于了解执法口径和典型违规行为。
+
+    '
+  name: 执法案例库
+  version: '2026-04-17'
+sources:
+- name: CAC处罚公示
+  note: CAC首页可访问但处罚子页返回空/需JS
+  status: blocked
+- name: 市监总局处罚
+  note: samr.gov.cn可访问但/zwgk/zxwj返回404
+  status: blocked
+- name: 工信部处罚
+  note: 工信部column/4634返回404
+  status: blocked
+- name: 公安部处罚
+  note: mps.gov.cn返回521错误
+  status: blocked
+- name: 国家金融监督管理总局
+  note: DNS不通
+  status: blocked
