@@ -67,7 +67,8 @@ class LocalBackup:
 
         # 更新 latest 软链接
         latest = self._latest_link(level_code)
-        date_path = Path(f"../../{level_code}/{date}")
+        # 软链接在 {base}/{level_code}/latest，指向上级目录的 {date}
+        date_path = Path(f"../{date}")
         try:
             if latest.is_symlink():
                 latest.unlink()
@@ -95,8 +96,9 @@ class LocalBackup:
                 return []
             date = versions[-1]
         else:
-            # 软链接指向相对路径 ../../{level_code}/{date}，需要拼接 base 来解析
-            date = (self.base / latest.readlink()).resolve().parent.name  # 软链接指向的目录名即 date
+            # 软链接指向 ../{date}，readlink()相对于latest的父目录即 {level_code}/ 目录
+            # latest.resolve() = {base}/{level_code}/{date}
+            date = latest.resolve().name  # resolve()后取最后一段即为date
 
         file_path = self._backup_file(level_code, date)
         if not file_path.exists():

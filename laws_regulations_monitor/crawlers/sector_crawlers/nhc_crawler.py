@@ -103,6 +103,9 @@ class NHCCrawler(BaseCrawler):
         try:
             r = requests.get(url, headers=self.headers, timeout=12)
             r.encoding = r.apparent_encoding or 'utf-8'
+            r.raise_for_status()
+            if r.encoding in (None, 'ISO-8859-1', 'latin1'):
+                r.encoding = 'utf-8'
             return r.text
         except Exception as e:
             logger.warning(f"HTTP失败 [{url[:50]}]: {e}")
